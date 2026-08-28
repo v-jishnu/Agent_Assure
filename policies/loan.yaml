@@ -1,0 +1,50 @@
+policies:
+  - id: FIN-001
+    name: Loan approval limit
+    description: Block loan approval requests exceeding ₹500,000.
+    version: 1
+    scope:
+      agent: loan-agent
+      environment: demo
+      tools:
+        - approve_loan
+    trigger:
+      event: tool.pre_execute
+    condition:
+      field: amount
+      operator: gt
+      value: 500000
+    severity: high
+    action: block
+    mode: enforce
+
+  - id: FIN-002
+    name: High-value loan human approval threshold
+    description: Require human approval for loan approval requests between ₹300,000 and ₹500,000.
+    version: 1
+    scope:
+      agent: loan-agent
+      environment: demo
+      tools:
+        - approve_loan
+    trigger:
+      event: tool.pre_execute
+    condition:
+      field: amount
+      operator: gt
+      value: 300000
+    severity: medium
+    action: ask
+    mode: enforce
+
+capabilities:
+  allowed:
+    - get_customer
+    - check_credit
+    - calculate_loan
+    - send_email
+  approval_required:
+    - transfer_money
+  forbidden:
+    - delete_customer
+    - delete_database
