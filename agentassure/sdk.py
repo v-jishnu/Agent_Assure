@@ -84,6 +84,7 @@ class AgentAssure:
                 policy_version=decision.policy_version,
                 decision=decision.outcome.value,
                 reason=decision.reason,
+                controls=decision.controls.as_citation() if decision.controls else None,
             )
 
             # 4. Pre-execution Interception: BLOCK
@@ -106,6 +107,7 @@ class AgentAssure:
                     policy_version=decision.policy_version,
                     decision=decision.outcome.value,
                     reason=decision.reason,
+                    controls=decision.controls.as_citation() if decision.controls else None,
                 )
                 # UNDERLYING TOOL IS NOT EXECUTED!
                 raise PolicyViolationError(decision)
@@ -130,6 +132,7 @@ class AgentAssure:
                     policy_version=decision.policy_version,
                     decision=decision.outcome.value,
                     reason=decision.reason,
+                    controls=decision.controls.as_citation() if decision.controls else None,
                 )
                 # UNDERLYING TOOL IS NOT EXECUTED!
                 raise PendingApprovalException(decision)
@@ -155,6 +158,7 @@ class AgentAssure:
                     policy_version=decision.policy_version,
                     decision=decision.outcome.value,
                     reason=decision.reason,
+                    controls=decision.controls.as_citation() if decision.controls else None,
                 )
                 return result
             except Exception as e:
