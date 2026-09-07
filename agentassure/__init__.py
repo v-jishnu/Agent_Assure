@@ -6,6 +6,7 @@ from agentassure.events import AgentEvent, EventType, EventStatus
 from agentassure.trace import TraceContext
 from agentassure.policy import PolicyEngine, PolicyDecision, PolicyOutcome, PolicyMode
 from agentassure.enforcement import EnforcementEngine, PolicyViolationError, PendingApprovalException
+from agentassure.evidence import EvidenceStore, EvidenceRecord
 from agentassure.sdk import AgentAssure
 
 __all__ = [
@@ -21,4 +22,6 @@ __all__ = [
     "EnforcementEngine",
     "PolicyViolationError",
     "PendingApprovalException",
+    "EvidenceStore",
+    "EvidenceRecord",
 ]
