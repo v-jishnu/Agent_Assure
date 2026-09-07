@@ -10,7 +10,7 @@ import pytest
 from agentassure.detectors import PIIDetector, find_pii, normalize, redact, PATTERNS
 from agentassure.events import AgentEvent, EventType
 from agentassure.policy import ControlMapping, PolicyEngine, PolicyOutcome
-from server.evidence import EvidenceStore
+from agentassure.evidence import EvidenceStore
 
 import re
 

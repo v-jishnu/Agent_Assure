@@ -13,5 +13,11 @@ __pycache__/
 .vscode/.DS_Store
 *.log
 
+# Build artifacts & package info
+*.egg-info/
+*.egg
+build/
+dist/
+
 # Local secrets
 .env

@@ -6,7 +6,7 @@ import pytest
 import os
 import tempfile
 import sqlite3
-from server.evidence import EvidenceStore
+from agentassure.evidence import EvidenceStore
 from agentassure.events import AgentEvent, EventType, EventStatus
 
 
