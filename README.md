@@ -64,7 +64,7 @@ flowchart TD
 
 ---
 
-## Executive Summary for Technical Managers
+## Executive Summary
 
 | Capability | What AgentAssure Does | Value / Compliance Standard |
 | :--- | :--- | :--- |
