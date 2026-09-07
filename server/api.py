@@ -10,7 +10,7 @@ from typing import Dict, List, Optional
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
-from server.evidence import EvidenceStore, EvidenceRecord
+from agentassure.evidence import EvidenceStore, EvidenceRecord
 
 
 # The demo writes to demo_evidence.db; override with AGENTASSURE_DB to point
