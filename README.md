@@ -131,7 +131,7 @@ AgentAssure is structured into five clean, decoupled layers with strict separati
 - **[enforcement.py](file:///c:/Agent_Assure/agentassure/enforcement.py)**: Pre-execution interception logic returning structured `PolicyDecision` objects with `PolicyOutcome` (`ALLOW`, `BLOCK`, `ASK`, `SHADOW`).
 - **[evidence.py](file:///c:/Agent_Assure/agentassure/evidence.py)**: Self-contained SQLite repository using SHA-256 hash chaining `hash(record_n) = SHA256(canonical_json(record_n))`. Implements PII redaction at rest and runtime hash verification (`verify_integrity()`).
 
-### 2. REST API & Governance Console Server (`server/`)
+### 2. REST API & Governance Console Server (`server/`) / Core (API-contract) :
 - **[api.py](file:///c:/Agent_Assure/server/api.py)**: FastAPI web application providing:
   - `GET /api/v1/stats`: Headline statistics, active trace/session counts, decision breakdown (`BLOCK`, `ASK`, `ALLOW`), PII redaction count, and control coverage distribution.
   - `GET /api/v1/traces`: Aggregated agent execution runs sorted newest-first.
