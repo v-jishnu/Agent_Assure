@@ -1,216 +1,173 @@
 # AgentAssure — Runtime Governance & Assurance Layer for AI Agents
 
-**AgentAssure** is a runtime governance and assurance layer that attaches to existing AI agents.
+> **Week-1 Technical Specification & Source of Truth**  
+> *Post-Dashboard Integration & Core Architecture Refactoring*
 
-It does **not** replace an agent's business logic. The agent continues its normal work while AgentAssure observes execution, evaluates actions against configurable governance policies, intervenes **before** sensitive actions execute, and records auditable, tamper-evident evidence.
-
----
-
-## Key Features (Week 1)
-
-1. **Canonical Event & Trace Model**: Normalizes agent executions into structured, traceable `AgentEvent`s with standard parent-child span tracking.
-2. **Declarative Policy Engine**: YAML-based policies with configurable scopes (agent, environment, tool), conditions (`gt`, `lt`, `eq`, `in`, `contains`), and capability rules (`allowed`, `approval_required`, `forbidden`).
-3. **Pre-Execution Interception & Enforcement**:
-   - `ALLOW`: Action is permitted and executes normally.
-   - `BLOCK`: Intercepts action *before* execution, preventing underlying tool function execution.
-   - `ASK`: Intercepts action *before* execution and marks request as pending human approval.
-4. **Compliance Control Mapping**: Every policy rule and capability boundary declares the external control it produces evidence for, so a blocked action cites a named clause rather than only a rule id:
-
-   ```yaml
-   controls:
-     iso42001: "A.9.4"      # Intended use of the AI system
-     eu_ai_act: "Art. 14"   # Human oversight
-   ```
-
-   The citation is carried on the `PolicyDecision` and persisted with the evidence record. This is what makes the output an audit artifact rather than a log line.
-
-5. **Explainable Anomaly & Security Detectors**:
-   - `PIIDetector`: Detects Indian BFSI identifiers — Aadhaar, PAN, +91 phone numbers, IFSC codes, cards and email.
-   - `SecretDetector`: Detects API key / secret credential leakage.
-   - `RestrictedToolDetector`: Flags dangerous system-level tool calls.
-
-   Detection canonicalises text before matching. A real model was observed writing an Aadhaar using `U+202F NARROW NO-BREAK SPACE` between digit groups — visually identical to a space, but enough to defeat a `[ -]` character class and let the identifier reach the audit log unmasked.
-
-6. **Data Minimisation at Rest**: The agent receives real data — a KYC lookup must return an Aadhaar for the workflow to function — but the evidence store masks identifiers before persisting them. Separating what the system may *process* from what it may *retain* keeps the audit log from becoming a PII repository.
-
-7. **Tamper-Evident Evidence Store**: SQLite storage utilizing SHA-256 hash chaining `hash(record_n) = SHA256(hash(record_{n-1}) + record_n)` with built-in integrity verification (`verify_integrity()`). The hash is computed over canonical JSON of the whole record, so every field is covered.
-
-8. **Developer SDK Wrapper**: Lightweight wrapper (`assure.wrap_tool(func)`) for easy integration without modifying underlying business logic.
-
-9. **LLM-Driven Demo Agent**: The demo agent is driven by a real model via Groq tool calling. It is given a task and a toolset and decides which tools to call with which arguments — so the governance layer is tested against decisions nobody scripted in advance.
+AgentAssure is a **runtime governance and assurance layer** that attaches to an existing AI agent. It does **not** replace an agent's business logic. The agent carries out its normal autonomous tasks while AgentAssure observes execution, evaluates actions against configurable governance policies, intervenes **before** sensitive actions execute, and records auditable, tamper-evident evidence.
 
 ---
 
-## Repository Structure
+## Executive Summary for Technical Managers
+
+| Capability | What AgentAssure Does | Value / Compliance Standard |
+| :--- | :--- | :--- |
+| **Observe** | Normalizes all agent execution into canonical `AgentEvent` traces with parent-child span tracking. | Full execution visibility & audit trail |
+| **Govern** | Evaluates tool calls against declarative YAML policies and real-time security detectors. | Configurable boundaries & thresholds |
+| **Enforce** | Pre-execution interception (`ALLOW`, `BLOCK`, `ASK`). Guarantees blocked tools never execute. | Prevents rogue agent actions |
+| **Assure** | Maintains a SHA-256 tamper-evident append-only hash chain with data minimisation masking at rest. | ISO 42001 (A.8.4, A.9.4) & EU AI Act (Art. 10, 14) |
+| **Console** | Zero-build, single-process FastAPI dashboard (`/`) displaying live stats, traces, and hash integrity. | Real-time governance dashboard |
+
+---
+
+## Layer-by-Layer Architecture
+
+AgentAssure is structured into five clean, decoupled layers with strict separation of concerns:
 
 ```text
-agentassure/
-│
-├── agentassure/
-│   ├── __init__.py         # Package exports
-│   ├── events.py           # Canonical AgentEvent model
-│   ├── trace.py            # Trace & Span Context management
-│   ├── policy.py           # Declarative Policy Engine & Scope matching
-│   ├── detectors.py        # Explainable PII, Secret, & Restricted Tool detectors
-│   ├── enforcement.py      # Pre-execution enforcement (BLOCK, ASK, ALLOW)
-│   ├── sdk.py              # AgentAssure Developer SDK wrapper
-│   └── adapters/
-│       ├── __init__.py
-│       └── langgraph.py    # LangGraph framework adapter
-│
-├── server/
-│   ├── __init__.py
-│   ├── evidence.py         # SQLite append-only evidence store & hash integrity
-│   ├── api.py              # FastAPI REST endpoints
-│   └── websocket.py        # Live WebSocket manager stub
-│
-├── policies/
-│   └── loan.yaml           # BFSI Loan Agent policy configuration
-│
-├── demo/
-│   └── loan_agent.py       # Standalone Loan Processing Agent governance demo
-│
-├── tests/
-│   ├── test_events.py      # Event schema tests
-│   ├── test_trace.py       # Trace hierarchy tests
-│   ├── test_policy.py      # Policy engine & condition tests
-│   ├── test_enforcement.py # Interception & tool execution prevention tests
-│   └── test_evidence.py   # SQLite hash chain & tamper detection tests
-│
-├── requirements.txt
-├── pyproject.toml
-└── README.md
+┌─────────────────────────────────────────────────────────────────────────────────────────┐
+│ LAYER 1: DEVELOPER SDK & GOVERNANCE CORE (agentassure/)                                │
+│ • AgentAssure (sdk.py)               • AgentEvent & TraceContext (events.py, trace.py) │
+│ • PolicyEngine (policy.py)           • Detectors (detectors.py - Indian PII, Secrets)  │
+│ • EnforcementEngine (enforcement.py) • EvidenceStore (evidence.py - SHA-256 Hash Chain) │
+└───────────────────────────────────────────┬─────────────────────────────────────────────┘
+                                            │
+                                            ▼
+┌─────────────────────────────────────────────────────────────────────────────────────────┐
+│ LAYER 2: REST API & GOVERNANCE CONSOLE SERVER (server/)                                 │
+│ • FastAPI Backend (server/api.py)     • Dashboard Web UI (server/static/index.html)     │
+│ • Endpoints: /api/v1/stats, /api/v1/traces, /api/v1/evidence, /api/v1/evidence/verify   │
+└───────────────────────────────────────────┬─────────────────────────────────────────────┘
+                                            │
+                                            ▼
+┌─────────────────────────────────────────────────────────────────────────────────────────┐
+│ LAYER 3: POLICY & COMPLIANCE CONFIGURATION (policies/)                                  │
+│ • Declarative YAML policies (policies/loan.yaml)                                        │
+│ • Maps rules to ISO/IEC 42001 & EU AI Act control citations                             │
+└───────────────────────────────────────────┬─────────────────────────────────────────────┘
+                                            │
+                                            ▼
+┌─────────────────────────────────────────────────────────────────────────────────────────┐
+│ LAYER 4: REAL LLM AGENT DEMO (demo/)                                                    │
+│ • Autonomous Loan Processing Agent (demo/loan_agent.py, agent_loop.py, llm.py)          │
+│ • Driven by real Groq tool calling; tests policy against unscripted model decisions     │
+└───────────────────────────────────────────┬─────────────────────────────────────────────┘
+                                            │
+                                            ▼
+┌─────────────────────────────────────────────────────────────────────────────────────────┐
+│ LAYER 5: AUTOMATED TEST & VERIFICATION SUITE (tests/)                                   │
+│ • 29 Unit & Integration Tests (events, trace, policy, enforcement, controls, evidence) │
+└─────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## Quick Start & Installation
+## Component Breakdown
 
-### 1. Install Dependencies
+### 1. Developer SDK & Governance Core (`agentassure/`)
+- **[sdk.py](file:///c:/Agent_Assure/agentassure/sdk.py)**: `AgentAssure` wrapper class. Wraps agent tool functions (`assure.wrap_tool(fn)`) to inject pre-execution policy evaluation and event telemetry without modifying underlying business logic.
+- **[events.py](file:///c:/Agent_Assure/agentassure/events.py)** & **[trace.py](file:///c:/Agent_Assure/agentassure/trace.py)**: Canonical `AgentEvent` schema and context-managed parent-child span tracker.
+- **[policy.py](file:///c:/Agent_Assure/agentassure/policy.py)**: YAML policy engine supporting scope matching (agent, environment, tool), condition evaluation (`gt`, `lt`, `eq`, `in`, `contains`), capability boundaries (`allowed`, `approval_required`, `forbidden`), and control citations.
+- **[detectors.py](file:///c:/Agent_Assure/agentassure/detectors.py)**: Explainable anomaly & security detectors:
+  - `PIIDetector`: Detects Indian BFSI identifiers — Aadhaar, PAN, +91 phone numbers, IFSC codes, credit cards, and email. Canonicalises unicode space variants (e.g. `U+202F NARROW NO-BREAK SPACE`).
+  - `SecretDetector`: Detects API key leakage (Groq, OpenAI, AWS, Slack, RSA keys).
+  - `RestrictedToolDetector`: Flag dangerous system-level tool execution attempts.
+- **[enforcement.py](file:///c:/Agent_Assure/agentassure/enforcement.py)**: Pre-execution interception logic returning structured `PolicyDecision` objects with `PolicyOutcome` (`ALLOW`, `BLOCK`, `ASK`, `SHADOW`).
+- **[evidence.py](file:///c:/Agent_Assure/agentassure/evidence.py)**: Self-contained SQLite repository using SHA-256 hash chaining `hash(record_n) = SHA256(canonical_json(record_n))`. Implements PII redaction at rest and runtime hash verification (`verify_integrity()`).
 
-```powershell
-pip install -r requirements.txt
+### 2. REST API & Governance Console Server (`server/`)
+- **[api.py](file:///c:/Agent_Assure/server/api.py)**: FastAPI web application providing:
+  - `GET /api/v1/stats`: Headline statistics, active trace/session counts, decision breakdown (`BLOCK`, `ASK`, `ALLOW`), PII redaction count, and control coverage distribution.
+  - `GET /api/v1/traces`: Aggregated agent execution runs sorted newest-first.
+  - `GET /api/v1/evidence`: Paginated/filtered audit trail records.
+  - `GET /api/v1/evidence/verify`: Hash chain integrity checker.
+  - `GET /health`: Server health check endpoint.
+  - Mounts `server/static/` at `/` for single-process uvicorn serving.
+- **[index.html](file:///c:/Agent_Assure/server/static/index.html)**: Vanilla HTML5/CSS3/JS governance console with zero build steps or Node toolchain. Displays real-time status badges, trace drill-downs, compliance citations, and hash integrity indicators.
+
+### 3. Policy & Compliance Control Mapping (`policies/loan.yaml`)
+Every policy rule and capability boundary declares the external compliance control it evidences:
+
+```yaml
+rules:
+  - id: "FIN-001"
+    name: "Disbursement Ceiling"
+    tool: "approve_loan"
+    condition: "input.amount > 500000"
+    action: "BLOCK"
+    reason: "Disbursement amount exceeds delegated limit of INR 500,000"
+    controls:
+      iso42001: "A.9.4"      # Intended use of the AI system
+      eu_ai_act: "Art. 14"   # Human oversight
 ```
 
-### 2. Configure the Model Provider
+When an action is blocked, the resulting `PolicyDecision` carries the control citation (e.g. `ISO/IEC 42001 A.9.4 | EU AI Act Art. 14`) directly into the audit evidence store.
 
-The demo agent uses Groq for inference. Copy the example environment file and add your key:
-
-```powershell
-copy .env.example .env
-```
-
-`.env` is gitignored and is never committed. The client itself uses only the standard library, so there is no additional dependency to install.
-
-### 3. Run the Demonstration Script
-
-Run the BFSI Loan Processing Agent governance demonstration:
-
-```powershell
-python demo/loan_agent.py
-```
-
-The model decides what to do in each scenario; the console prints every tool it chose and the governance outcome.
-
-Expected Output Highlights:
-- Compliant loan request (₹250,000) -> `ALLOW` (Underlying tool executes).
-- Loan above the delegated limit (₹800,000) -> `BLOCK` FIN-001, citing ISO/IEC 42001 A.9.4 | EU AI Act Art. 14 (pre-execution interception; the tool body does **NOT** run).
-- High-value loan (₹400,000) -> `ASK` FIN-002, citing A.9.2 | Art. 14 (paused pending human approval).
-- Applicant below the credit floor -> `BLOCK` FIN-003, citing A.9.4 | Art. 9.
-- Forbidden capability (`delete_customer`) -> `BLOCK` by capability policy.
-- KYC identity lookup -> `ALLOW`, but identifiers are masked in the evidence store (`Raw identifiers in evidence : none`).
-- Evidence store integrity verification -> `SECURE (100% VALID)`.
-
-Each blocked scenario prints an execution-counter check proving the underlying function never ran.
-
-### 4. Run Automated Tests
-
-Run the complete test suite:
-
-```powershell
-pytest tests/ -v
-```
+### 4. Real LLM Agent Demo (`demo/`)
+- **[loan_agent.py](file:///c:/Agent_Assure/demo/loan_agent.py)**: Runs a BFSI retail loan processing agent powered by a real Groq LLM model (`llama-3.3-70b-versatile`). The model autonomously selects tools and parameters across 6 realistic scenarios:
+  1. Compliant loan request (₹250,000) -> `ALLOW`
+  2. Loan above delegated limit (₹800,000) -> `BLOCK` (FIN-001)
+  3. High-value loan (₹400,000) -> `ASK` (FIN-002, pending human sign-off)
+  4. Applicant below credit floor (610 score) -> `BLOCK` (FIN-003)
+  5. Forbidden capability (`delete_customer`) -> `BLOCK` (Capability Policy)
+  6. Identity KYC lookup -> `ALLOW` (Real Aadhaar/PAN processed by agent, but PII is masked before persisting to evidence log)
 
 ---
 
 ## Pre-Execution Interception Guarantee
 
-AgentAssure guarantees that when a policy returns `BLOCK` or `ASK`, the underlying tool function call is intercepted **before** execution.
+AgentAssure guarantees that when a policy decision evaluates to `BLOCK` or `ASK`, the underlying tool function **never executes**.
 
 ```python
-from agentassure import AgentAssure
+from agentassure import AgentAssure, PolicyViolationError
 
 assure = AgentAssure(policy_path="policies/loan.yaml")
 governed_approve_loan = assure.wrap_tool(approve_loan, tool_name="approve_loan")
 
-# Throws PolicyViolationError without executing approve_loan()
-governed_approve_loan(customer_id="CUST-102", amount=800000)
+# Throws PolicyViolationError BEFORE approve_loan() function body can execute
+try:
+    governed_approve_loan(customer_id="CUST-102", amount=800000)
+except PolicyViolationError as e:
+    print(f"Blocked by policy: {e.decision.policy_id}")
+    # Underlying approve_loan function execution count remains unchanged!
 ```
 
 ---
 
-## Deploying the Governance Console
+## Verification & Execution Guide
 
-The console is a **read-only view over the evidence store**. It has no
-dependency on any model provider — `server/` contains no Groq import — so the
-deployed instance needs no API key, calls no LLM, and costs nothing to run.
-
-Agent runs happen locally, where the key lives. The deployment serves a
-committed evidence snapshot (`deploy/seed_evidence.db`). This split is
-deliberate:
-
-- no `GROQ_API_KEY` ever exists in the deployment;
-- no public endpoint can trigger agent runs and burn the model quota;
-- cold starts stay fast because nothing calls a model on boot.
-
-### Render (blueprint included)
-
-`render.yaml` is committed, so Render can deploy the repository directly:
-
-1. Push the branch to GitHub.
-2. In Render, choose **New → Blueprint** and select the repository.
-3. Deploy. No environment variables need to be set by hand — the blueprint
-   already points `AGENTASSURE_DB` at the committed snapshot.
-
-Any host that runs a Python web service works the same way; a `Procfile` is
-included for Heroku-style platforms:
-
-```
-web: uvicorn server.api:app --host 0.0.0.0 --port $PORT
+### 1. Install Dependencies
+```powershell
+pip install -r requirements.txt
 ```
 
-Two things a host requires and a local run does not: bind `0.0.0.0` rather
-than localhost, and read the port from `$PORT` rather than hardcoding it.
+### 2. Configure Environment (Optional for Demo Agent)
+```powershell
+copy .env.example .env
+# Edit .env and add GROQ_API_KEY if running the live LLM demo
+```
 
-### Refreshing the published evidence
+### 3. Run Automated Tests
+```powershell
+pytest
+```
+*Expected Result*: All 29 unit and integration tests pass cleanly.
 
-The snapshot is a point-in-time export, so publishing newer evidence is an
-explicit step:
-
+### 4. Run the LLM Governance Demo
 ```powershell
 python demo/loan_agent.py
-copy demo_evidence.db deploy\seed_evidence.db
-git add -f deploy/seed_evidence.db
-git commit -m "chore: refresh evidence snapshot"
 ```
 
-`*.db` is gitignored with a single exception for this snapshot, so working
-databases are never committed by accident.
-
-### Verifying a deployment
-
-```bash
-curl https://<your-app>/health
-curl https://<your-app>/api/v1/evidence/verify
+### 5. Launch the Governance Console Server
+```powershell
+.venv\Scripts\python.exe -m uvicorn server.api:app --reload
 ```
+Open [http://localhost:8000](http://localhost:8000) in your browser to view the live governance dashboard.
 
-The second call recomputes the entire hash chain on the server and should
-return `"status": "SECURE"`. If a record were altered in transit or at rest,
-it would report `TAMPERED_DETECTED` instead.
+---
 
-### For the mentor demo, run it locally
+## Deployment Blueprint
 
-A free-tier cold start can take the better part of a minute, and the
-deployment shows a fixed snapshot rather than a live agent. For the
-presentation itself, run the demo and the console locally — the deployed URL
-is better used as something the mentor can open before or after the call.
+The governance console is deployed as a **read-only audit dashboard** over a committed evidence snapshot (`deploy/seed_evidence.db`). 
+
+- `render.yaml` and `Procfile` are included for Render / Heroku-style hosts.
+- The server process requires **no model API keys** and makes zero LLM calls, ensuring fast boot times, zero quota burn, and total security isolation.
