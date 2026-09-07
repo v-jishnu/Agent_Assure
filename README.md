@@ -7,6 +7,63 @@ AgentAssure is a **runtime governance and assurance layer** that attaches to an 
 
 ---
 
+## System Architecture & Integration Flow
+
+The diagram below visualizes how the three core entities—the **AI Agent & Business Tools**, the **AgentAssure SDK & Governance Core**, and the **Governance Dashboard & REST Server**—interlink and flow data seamlessly across the system:
+
+```mermaid
+flowchart TD
+    subgraph AGENT ["1. AI Agent & Business Tools"]
+        AgentLoop["Autonomous Agent Loop<br/>(LLM / Prompt / Tools)"]
+        ToolCall["Tool Invocation Attempt<br/>(e.g. approve_loan, fetch_kyc)"]
+        ToolExec["Underlying Tool Function<br/>(Executed ONLY if ALLOWED)"]
+        AgentLoop --> ToolCall
+    end
+
+    subgraph SDK ["2. AgentAssure Governance Core & SDK Wrapper"]
+        SDKWrap["AgentAssure SDK Wrapper<br/>assure.wrap_tool()"]
+        TraceTracker["TraceContext & AgentEvent<br/>(Parent-Child Span Telemetry)"]
+        
+        subgraph ENGINE ["Pre-Execution Enforcement Engine"]
+            PolicyEng["Declarative Policy Engine<br/>(policies/loan.yaml)"]
+            Detectors["Security Detectors<br/>(Indian PII, Secrets, Tools)"]
+            DecisionNode{"Policy Decision<br/>(ALLOW / BLOCK / ASK)"}
+        end
+
+        EvStore["SQLite EvidenceStore<br/>• PII Redaction at Rest<br/>• SHA-256 Hash Chain Integrity<br/>• ISO 42001 & EU AI Act Citations"]
+        
+        ToolCall --> SDKWrap
+        SDKWrap --> TraceTracker
+        SDKWrap --> PolicyEng
+        SDKWrap --> Detectors
+        PolicyEng --> DecisionNode
+        Detectors --> DecisionNode
+        
+        DecisionNode -- "ALLOW" --> ToolExec
+        DecisionNode -- "BLOCK / ASK" --> Intercept["Interception Triggered<br/>(Function Execution Prevented)"]
+        
+        DecisionNode --> EvStore
+        ToolExec --> EvStore
+    end
+
+    subgraph DASHBOARD ["3. Governance Dashboard & REST Server"]
+        API["FastAPI Backend Server<br/>(server/api.py)"]
+        Endpoints["REST API Endpoints<br/>(/api/v1/stats, /traces, /evidence, /verify)"]
+        WebUI["Governance Console UI<br/>(server/static/index.html)"]
+        
+        EvStore --> API
+        API --> Endpoints
+        Endpoints --> WebUI
+    end
+
+    style AGENT fill:#111c2e,stroke:#24354f,color:#dbe5f2
+    style SDK fill:#0b1220,stroke:#4f9cf9,color:#dbe5f2
+    style DASHBOARD fill:#17263c,stroke:#3ed598,color:#dbe5f2
+    style DecisionNode fill:#ffb020,stroke:#ff5f6d,color:#0b1220
+```
+
+---
+
 ## Executive Summary for Technical Managers
 
 | Capability | What AgentAssure Does | Value / Compliance Standard |
