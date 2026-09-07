@@ -28,6 +28,28 @@ class SeverityLevel(str, Enum):
     CRITICAL = "critical"
 
 
+class ControlMapping(BaseModel):
+    """
+    The external controls a policy rule produces evidence for.
+
+    This is what separates a governance layer from a rules engine: when a rule
+    fires, the resulting evidence record cites the named clause it evidences,
+    so an assessor can trace a runtime decision back to the control framework
+    the organisation is certified against.
+    """
+    iso42001: Optional[str] = None   # e.g. "A.9.4"
+    eu_ai_act: Optional[str] = None  # e.g. "Art. 14"
+    note: Optional[str] = None       # why this rule maps to that clause
+
+    def as_citation(self) -> str:
+        parts = []
+        if self.iso42001:
+            parts.append(f"ISO/IEC 42001 {self.iso42001}")
+        if self.eu_ai_act:
+            parts.append(f"EU AI Act {self.eu_ai_act}")
+        return " | ".join(parts)
+
+
 class PolicyScope(BaseModel):
     agent: Optional[Union[str, List[str]]] = None
     environment: Optional[Union[str, List[str]]] = None
@@ -58,6 +80,7 @@ class PolicyRule(BaseModel):
     severity: SeverityLevel = SeverityLevel.MEDIUM
     action: PolicyOutcome = PolicyOutcome.BLOCK
     mode: PolicyMode = PolicyMode.ENFORCE
+    controls: Optional[ControlMapping] = None
 
     @field_validator("action", mode="before")
     @classmethod
@@ -87,6 +110,10 @@ class CapabilitiesPolicy(BaseModel):
     allowed: List[str] = Field(default_factory=list)
     approval_required: List[str] = Field(default_factory=list)
     forbidden: List[str] = Field(default_factory=list)
+    # Capability boundaries are themselves a control, so they carry a mapping
+    # too — otherwise a forbidden-tool block would be the only decision in the
+    # evidence log without a clause behind it.
+    controls: Optional[ControlMapping] = None
 
 
 class PolicyDecision(BaseModel):
@@ -95,6 +122,7 @@ class PolicyDecision(BaseModel):
     policy_version: Optional[int] = None
     reason: str
     severity: SeverityLevel = SeverityLevel.LOW
+    controls: Optional[ControlMapping] = None
     metadata: Dict[str, Any] = Field(default_factory=dict)
 
 
@@ -201,6 +229,7 @@ class PolicyEngine:
                 policy_version=1,
                 reason=f"Tool '{tool_name}' is forbidden by capability policy",
                 severity=SeverityLevel.HIGH,
+                controls=self.capabilities.controls,
             )
 
         if tool_name in self.capabilities.approval_required:
@@ -210,6 +239,7 @@ class PolicyEngine:
                 policy_version=1,
                 reason=f"Tool '{tool_name}' requires human approval by capability policy",
                 severity=SeverityLevel.MEDIUM,
+                controls=self.capabilities.controls,
             )
 
         return None
@@ -256,6 +286,7 @@ class PolicyEngine:
                 policy_version=rule.version,
                 reason=reason,
                 severity=rule.severity,
+                controls=rule.controls,
                 metadata={"rule_name": rule.name, "mode": rule.mode.value},
             )
 

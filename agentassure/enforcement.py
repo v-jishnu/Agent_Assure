@@ -3,7 +3,9 @@ Pre-Execution Enforcement Engine for AgentAssure
 """
 
 from typing import Any, Dict, List, Optional
-from agentassure.policy import PolicyEngine, PolicyDecision, PolicyOutcome, SeverityLevel
+from agentassure.policy import (
+    PolicyEngine, PolicyDecision, PolicyOutcome, SeverityLevel, ControlMapping,
+)
 from agentassure.detectors import BaseDetector, DetectorSignal
 
 
@@ -49,6 +51,9 @@ class EnforcementEngine:
                         policy_version=1,
                         reason=f"Security detector alert: {signal.reason}",
                         severity=SeverityLevel.HIGH,
+                        # A detector carries its own mapping, so a detector
+                        # block is as citable as a policy block.
+                        controls=signal.controls,
                         metadata=signal.details
                     )
 

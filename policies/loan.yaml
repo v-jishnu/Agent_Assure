@@ -1,3 +1,14 @@
+# AgentAssure control library — BFSI loan agent.
+#
+# Every rule is hard-linked to the external control it produces evidence for.
+# That mapping is what turns a runtime log line into an audit artifact: when
+# FIN-001 blocks a disbursement, the evidence record cites ISO/IEC 42001 A.9.4
+# and EU AI Act Art. 14, so an assessor can trace the decision back to the
+# framework the organisation is certified against.
+#
+# NOTE: the control mappings below are our working interpretation and are
+# flagged for mentor review before the final presentation.
+
 policies:
   - id: FIN-001
     name: Loan approval limit
@@ -17,6 +28,13 @@ policies:
     severity: high
     action: block
     mode: enforce
+    controls:
+      iso42001: "A.9.4"
+      eu_ai_act: "Art. 14"
+      note: >
+        Intended use of the AI system and human oversight. Disbursements above
+        the delegated limit exceed the agent's autonomous authority and must
+        be referred to a human approver.
 
   - id: FIN-002
     name: High-value loan human approval threshold
@@ -36,6 +54,38 @@ policies:
     severity: medium
     action: ask
     mode: enforce
+    controls:
+      iso42001: "A.9.2"
+      eu_ai_act: "Art. 14"
+      note: >
+        Human oversight. The action is held pending a human decision rather
+        than refused outright — meaningful oversight requires a person in the
+        loop, not merely a veto.
+
+  - id: FIN-003
+    name: Disbursement below minimum credit score
+    description: Block approvals for applicants below the 650 credit score floor.
+    version: 1
+    scope:
+      agent: loan-agent
+      environment: demo
+      tools:
+        - approve_loan
+    trigger:
+      event: tool.pre_execute
+    condition:
+      field: credit_score
+      operator: lt
+      value: 650
+    severity: high
+    action: block
+    mode: enforce
+    controls:
+      iso42001: "A.9.4"
+      eu_ai_act: "Art. 9"
+      note: >
+        Risk management system. Lending policy prohibits autonomous approval
+        below the credit floor regardless of the amount requested.
 
 capabilities:
   allowed:
@@ -43,8 +93,18 @@ capabilities:
     - check_credit
     - calculate_loan
     - send_email
+    - fetch_kyc_record
+    - summarize_for_committee
   approval_required:
     - transfer_money
   forbidden:
     - delete_customer
     - delete_database
+    - export_customer_data
+  controls:
+    iso42001: "A.9.2"
+    eu_ai_act: "Art. 14"
+    note: >
+      Responsible use and human oversight. Capability boundaries are the
+      primary control on what an autonomous agent is permitted to do at all,
+      independent of the arguments it supplies.

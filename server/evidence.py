@@ -9,6 +9,7 @@ import hashlib
 from typing import List, Optional, Tuple
 from pydantic import BaseModel
 from agentassure.events import AgentEvent
+from agentassure.detectors import redact
 
 
 
@@ -34,30 +35,28 @@ class EvidenceRecord(BaseModel):
     policy_version: Optional[int] = None
     decision: Optional[str] = None
     reason: Optional[str] = None
+    controls: Optional[str] = None  # e.g. "ISO/IEC 42001 A.9.4 | EU AI Act Art. 14"
+    redactions: int = 0
     risk_score: float = 0.0
     previous_hash: str = GENESIS_HASH
     record_hash: str = ""
 
     def calculate_hash(self) -> str:
-        payload = (
-            f"{self.previous_hash}|"
-            f"{self.record_id}|"
-            f"{self.event_id}|"
-            f"{self.trace_id}|"
-            f"{self.span_id}|"
-            f"{self.agent_id}|"
-            f"{self.session_id}|"
-            f"{self.timestamp}|"
-            f"{self.event_type}|"
-            f"{self.tool_name or ''}|"
-            f"{self.input or ''}|"
-            f"{self.output or ''}|"
-            f"{self.policy_id or ''}|"
-            f"{self.policy_version or ''}|"
-            f"{self.decision or ''}|"
-            f"{self.reason or ''}"
+        """
+        Hash every field of the record except its own hash and row id.
+
+        Canonical JSON rather than a delimiter-joined string: a '|' appearing
+        inside any value (a reason, a tool input) would otherwise shift the
+        field boundaries, so two different records could hash identically.
+        Building the payload from the model also means a field added later is
+        covered automatically — previously risk_score and parent_span_id were
+        outside the hash and could be edited without breaking verification.
+        """
+        payload = self.model_dump(exclude={"id", "record_hash"})
+        canonical = json.dumps(
+            payload, sort_keys=True, separators=(",", ":"), default=str
         )
-        return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+        return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
 
 class EvidenceStore:
@@ -97,6 +96,8 @@ class EvidenceStore:
                     policy_version INTEGER,
                     decision TEXT,
                     reason TEXT,
+                    controls TEXT,
+                    redactions INTEGER DEFAULT 0,
                     risk_score REAL DEFAULT 0.0,
                     previous_hash TEXT NOT NULL,
                     record_hash TEXT NOT NULL
@@ -120,13 +121,29 @@ class EvidenceStore:
         policy_version: Optional[int] = None,
         decision: Optional[str] = None,
         reason: Optional[str] = None,
+        controls: Optional[str] = None,
         risk_score: float = 0.0,
+        mask_pii: bool = True,
     ) -> EvidenceRecord:
 
         previous_hash = self.get_latest_record_hash()
 
         input_str = json.dumps(event.input) if event.input is not None else None
         output_str = json.dumps(event.output) if event.output is not None else None
+
+        # Data minimisation. The agent already received the real values — a
+        # KYC lookup must return an Aadhaar for the workflow to function — but
+        # the audit log has no such need, so the retained copy is masked.
+        # Separating what the system may *process* from what it may *retain*
+        # is what stops the evidence store becoming a PII repository.
+        redactions = 0
+        if mask_pii:
+            if input_str:
+                input_str, n_in = redact(input_str)
+                redactions += n_in
+            if output_str:
+                output_str, n_out = redact(output_str)
+                redactions += n_out
 
         record = EvidenceRecord(
             record_id=f"rec_{event.event_id}",
@@ -145,6 +162,8 @@ class EvidenceStore:
             policy_version=policy_version,
             decision=decision,
             reason=reason,
+            controls=controls,
+            redactions=redactions,
             risk_score=risk_score,
             previous_hash=previous_hash,
             record_hash="",
@@ -158,13 +177,13 @@ class EvidenceStore:
                     record_id, event_id, trace_id, span_id, parent_span_id,
                     agent_id, session_id, timestamp, event_type, tool_name,
                     input, output, policy_id, policy_version, decision, reason,
-                    risk_score, previous_hash, record_hash
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    controls, redactions, risk_score, previous_hash, record_hash
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (
                 record.record_id, record.event_id, record.trace_id, record.span_id, record.parent_span_id,
                 record.agent_id, record.session_id, record.timestamp, record.event_type, record.tool_name,
                 record.input, record.output, record.policy_id, record.policy_version, record.decision, record.reason,
-                record.risk_score, record.previous_hash, record.record_hash
+                record.controls, record.redactions, record.risk_score, record.previous_hash, record.record_hash
             ))
             conn.commit()
 
