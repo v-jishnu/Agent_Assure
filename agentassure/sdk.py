@@ -10,7 +10,17 @@ from agentassure.trace import TraceContext, generate_trace_id, generate_span_id
 from agentassure.policy import PolicyEngine, PolicyDecision, PolicyOutcome
 from agentassure.detectors import BaseDetector, PIIDetector, SecretDetector, RestrictedToolDetector
 from agentassure.enforcement import EnforcementEngine, PolicyViolationError, PendingApprovalException
-from server.evidence import EvidenceStore
+
+# NOTE: EvidenceStore is imported lazily inside __init__ rather than at module
+# scope. Importing it here creates a cycle — server/__init__ imports
+# server.evidence, which imports agentassure.events, which pulls in
+# agentassure/__init__, which imports this module, which needs server.evidence
+# before it has finished initialising. That made `import server.api` fail
+# outright, so the API server could never start.
+#
+# The deeper fix is to move EvidenceStore under agentassure/: the SDK
+# depending on the server package is a layering inversion. Deferring the
+# import breaks the cycle without restructuring the package.
 
 
 class AgentAssure:
@@ -36,6 +46,8 @@ class AgentAssure:
 
         self.detectors = detectors
         self.enforcement_engine = EnforcementEngine(self.policy_engine, self.detectors)
+
+        from server.evidence import EvidenceStore  # deferred: see note above
         self.evidence_store = EvidenceStore(db_path)
 
     def set_session(self, session_id: str):
