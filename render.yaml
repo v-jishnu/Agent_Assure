@@ -1,0 +1,33 @@
+# Render blueprint for the AgentAssure governance console.
+#
+# What gets deployed is the *console only* — a read-only view over an evidence
+# snapshot. The agent itself is not run in the cloud, deliberately:
+#
+#   * the console has no dependency on any model provider, so no GROQ_API_KEY
+#     needs to exist in the deployment at all;
+#   * a public endpoint that could trigger agent runs would let anyone burn
+#     the project's model quota;
+#   * cold starts stay fast because nothing calls an LLM on boot.
+#
+# Agent runs happen locally, where the API key lives. To publish a newer set
+# of evidence, re-run the demo and refresh the committed snapshot:
+#
+#   python demo/loan_agent.py
+#   copy demo_evidence.db deploy\seed_evidence.db     (Windows)
+#   cp demo_evidence.db deploy/seed_evidence.db       (macOS/Linux)
+#   git add -f deploy/seed_evidence.db && git commit -m "chore: refresh evidence snapshot"
+
+services:
+  - type: web
+    name: agentassure-console
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    # Render supplies $PORT; binding 0.0.0.0 is required for the container
+    # to be reachable from outside.
+    startCommand: uvicorn server.api:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.11"
+      - key: AGENTASSURE_DB
+        value: deploy/seed_evidence.db

@@ -5,6 +5,10 @@ __pycache__/
 .pytest_cache/
 *.db
 *.sqlite
+
+# The deployed console is read-only and ships with a committed evidence
+# snapshot, so it needs no API key and no agent run to be useful.
+!deploy/seed_evidence.db
 .idea/
 .vscode/.DS_Store
 *.log

@@ -146,3 +146,71 @@ governed_approve_loan = assure.wrap_tool(approve_loan, tool_name="approve_loan")
 # Throws PolicyViolationError without executing approve_loan()
 governed_approve_loan(customer_id="CUST-102", amount=800000)
 ```
+
+---
+
+## Deploying the Governance Console
+
+The console is a **read-only view over the evidence store**. It has no
+dependency on any model provider — `server/` contains no Groq import — so the
+deployed instance needs no API key, calls no LLM, and costs nothing to run.
+
+Agent runs happen locally, where the key lives. The deployment serves a
+committed evidence snapshot (`deploy/seed_evidence.db`). This split is
+deliberate:
+
+- no `GROQ_API_KEY` ever exists in the deployment;
+- no public endpoint can trigger agent runs and burn the model quota;
+- cold starts stay fast because nothing calls a model on boot.
+
+### Render (blueprint included)
+
+`render.yaml` is committed, so Render can deploy the repository directly:
+
+1. Push the branch to GitHub.
+2. In Render, choose **New → Blueprint** and select the repository.
+3. Deploy. No environment variables need to be set by hand — the blueprint
+   already points `AGENTASSURE_DB` at the committed snapshot.
+
+Any host that runs a Python web service works the same way; a `Procfile` is
+included for Heroku-style platforms:
+
+```
+web: uvicorn server.api:app --host 0.0.0.0 --port $PORT
+```
+
+Two things a host requires and a local run does not: bind `0.0.0.0` rather
+than localhost, and read the port from `$PORT` rather than hardcoding it.
+
+### Refreshing the published evidence
+
+The snapshot is a point-in-time export, so publishing newer evidence is an
+explicit step:
+
+```powershell
+python demo/loan_agent.py
+copy demo_evidence.db deploy\seed_evidence.db
+git add -f deploy/seed_evidence.db
+git commit -m "chore: refresh evidence snapshot"
+```
+
+`*.db` is gitignored with a single exception for this snapshot, so working
+databases are never committed by accident.
+
+### Verifying a deployment
+
+```bash
+curl https://<your-app>/health
+curl https://<your-app>/api/v1/evidence/verify
+```
+
+The second call recomputes the entire hash chain on the server and should
+return `"status": "SECURE"`. If a record were altered in transit or at rest,
+it would report `TAMPERED_DETECTED` instead.
+
+### For the mentor demo, run it locally
+
+A free-tier cold start can take the better part of a minute, and the
+deployment shows a fixed snapshot rather than a live agent. For the
+presentation itself, run the demo and the console locally — the deployed URL
+is better used as something the mentor can open before or after the call.
