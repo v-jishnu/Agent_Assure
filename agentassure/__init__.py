@@ -9,6 +9,10 @@ from agentassure.enforcement import EnforcementEngine, PolicyViolationError, Pen
 from agentassure.evidence import EvidenceStore, EvidenceRecord
 from agentassure.sdk import AgentAssure
 
+from agentassure.approval import ApprovalStore, ApprovalRequest, ApprovalStatus
+from agentassure.logging import LogEntry, LogBuffer, default_log_buffer, log_runtime
+from agentassure.publisher import EventPublisher, default_event_publisher
+
 __all__ = [
     "AgentAssure",
     "AgentEvent",
@@ -24,4 +28,13 @@ __all__ = [
     "PendingApprovalException",
     "EvidenceStore",
     "EvidenceRecord",
+    "ApprovalStore",
+    "ApprovalRequest",
+    "ApprovalStatus",
+    "LogEntry",
+    "LogBuffer",
+    "default_log_buffer",
+    "log_runtime",
+    "EventPublisher",
+    "default_event_publisher",
 ]
