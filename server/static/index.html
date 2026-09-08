@@ -3,308 +3,1178 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>AgentAssure — Governance Console</title>
+<title>AgentAssure — Operator Console</title>
 <style>
-  :root {
-    --bg: #0b1220;
-    --panel: #111c2e;
-    --panel-2: #17263c;
-    --line: #24354f;
-    --text: #dbe5f2;
-    --muted: #8398b3;
-    --accent: #4f9cf9;
-    --block: #ff5f6d;
-    --ask: #ffb020;
-    --allow: #3ed598;
-    --mask: #59d5d0;
-  }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body {
-    background: var(--bg); color: var(--text);
-    font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
-    font-size: 14px; line-height: 1.5;
-  }
-  .wrap { max-width: 1280px; margin: 0 auto; padding: 0 22px 60px; }
+/* ═══════════════════════════════════════════════════════════════════
+   1. ROOT VARIABLES & RESET
+   ═══════════════════════════════════════════════════════════════════ */
+:root {
+  --bg: #0b1220; --panel: #111c2e; --panel-2: #17263c;
+  --line: #24354f; --text: #dbe5f2; --muted: #8398b3;
+  --accent: #4f9cf9; --block: #ff5f6d; --ask: #ffb020;
+  --allow: #3ed598; --mask: #59d5d0; --shadow-c: #8398b3;
+  --sidebar-w: 210px; --drawer-w: 420px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:"Segoe UI",system-ui,-apple-system,sans-serif;font-size:14px;line-height:1.5;overflow:hidden;height:100vh}
+a{color:var(--accent);text-decoration:none}
+button{font-family:inherit}
 
-  header {
-    display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
-    padding: 20px 0; border-bottom: 1px solid var(--line); margin-bottom: 22px;
-  }
-  .logo { font-size: 20px; font-weight: 700; letter-spacing: .2px; }
-  .logo span { color: var(--accent); }
-  .tagline { color: var(--muted); font-size: 12px; }
-  .spacer { flex: 1; }
+/* ═══════════════════════════════════════════════════════════════════
+   2. LAYOUT — SIDEBAR / MAIN / DRAWER
+   ═══════════════════════════════════════════════════════════════════ */
+#app{display:flex;height:100vh;width:100%}
+#sidebar{width:var(--sidebar-w);min-width:var(--sidebar-w);background:var(--panel);border-right:1px solid var(--line);display:flex;flex-direction:column;height:100vh;overflow-y:auto}
+#main{flex:1;overflow-y:auto;padding:24px 28px 60px}
+#drawer-overlay{position:fixed;top:0;right:0;width:0;height:100vh;background:rgba(11,18,32,.55);z-index:90;opacity:0;transition:opacity .2s}
+#drawer-overlay.open{width:100%;opacity:1}
+#drawer{position:fixed;top:0;right:0;width:var(--drawer-w);height:100vh;background:var(--panel);border-left:1px solid var(--line);z-index:100;transform:translateX(100%);transition:transform .25s ease;overflow-y:auto;padding:20px}
+#drawer.open{transform:translateX(0)}
 
-  .pill {
-    display: inline-flex; align-items: center; gap: 8px;
-    padding: 7px 14px; border-radius: 999px; font-size: 12.5px; font-weight: 600;
-  }
-  .pill.ok  { background: rgba(62,213,152,.12); color: var(--allow); border: 1px solid rgba(62,213,152,.4); }
-  .pill.bad { background: rgba(255,95,109,.12); color: var(--block); border: 1px solid rgba(255,95,109,.45); }
-  .dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
-  .stamp { color: var(--muted); font-size: 11.5px; font-variant-numeric: tabular-nums; }
+/* ═══════════════════════════════════════════════════════════════════
+   3. SIDEBAR NAVIGATION
+   ═══════════════════════════════════════════════════════════════════ */
+.sb-logo{padding:20px 18px 6px;font-size:18px;font-weight:700;letter-spacing:.2px}
+.sb-logo span{color:var(--accent)}
+.sb-tag{padding:0 18px 18px;font-size:11px;color:var(--muted)}
+.sb-nav{list-style:none;flex:1}
+.sb-nav li{display:block}
+.sb-nav a{display:flex;align-items:center;gap:10px;padding:10px 18px;color:var(--muted);font-size:13px;font-weight:500;border-left:3px solid transparent;transition:all .15s}
+.sb-nav a:hover{color:var(--text);background:rgba(79,156,249,.06)}
+.sb-nav a.active{color:var(--accent);border-left-color:var(--accent);background:rgba(79,156,249,.08)}
+.sb-nav .icon{width:18px;text-align:center;font-size:15px;flex-shrink:0}
+.sb-nav .p3{opacity:.5}
+.sb-sep{height:1px;background:var(--line);margin:8px 18px}
+.sb-status{padding:14px 18px;border-top:1px solid var(--line);font-size:11px;display:flex;align-items:center;gap:7px}
+.sb-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.sb-dot.on{background:var(--allow);box-shadow:0 0 6px var(--allow)}
+.sb-dot.off{background:var(--block)}
+.sb-dot.re{background:var(--ask);animation:pulse 1.2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
 
-  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px,1fr)); gap: 14px; margin-bottom: 22px; }
-  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 15px 17px; }
-  .card .k { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .7px; margin-bottom: 7px; }
-  .card .v { font-size: 27px; font-weight: 700; font-variant-numeric: tabular-nums; }
-  .card.block .v { color: var(--block); }
-  .card.ask   .v { color: var(--ask); }
-  .card.mask  .v { color: var(--mask); }
-  .card.allow .v { color: var(--allow); }
+/* ═══════════════════════════════════════════════════════════════════
+   4. CARDS & METRICS
+   ═══════════════════════════════════════════════════════════════════ */
+.page-title{font-size:18px;font-weight:700;margin-bottom:4px}
+.page-sub{color:var(--muted);font-size:12px;margin-bottom:18px}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(155px,1fr));gap:12px;margin-bottom:22px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px 16px}
+.card .k{color:var(--muted);font-size:10.5px;text-transform:uppercase;letter-spacing:.6px;margin-bottom:5px}
+.card .v{font-size:26px;font-weight:700;font-variant-numeric:tabular-nums}
+.card.block .v{color:var(--block)} .card.ask .v{color:var(--ask)} .card.allow .v{color:var(--allow)} .card.mask .v{color:var(--mask)}
 
-  .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
-  @media (max-width: 900px) { .cols { grid-template-columns: 1fr; } }
+/* ═══════════════════════════════════════════════════════════════════
+   5. PANELS, TABLES, CHIPS
+   ═══════════════════════════════════════════════════════════════════ */
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px;margin-bottom:16px}
+.panel h2{font-size:14px;margin-bottom:4px}
+.panel .sub{color:var(--muted);font-size:12px;margin-bottom:12px}
+table{width:100%;border-collapse:collapse}
+th{text-align:left;color:var(--muted);font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;padding:7px 10px;border-bottom:1px solid var(--line);white-space:nowrap}
+td{padding:8px 10px;border-bottom:1px solid rgba(36,53,79,.5);font-size:12.5px;vertical-align:top}
+tr.click{cursor:pointer}
+tr.click:hover td{background:var(--panel-2)}
+.mono{font-family:Consolas,"SF Mono",monospace;font-size:11.5px;color:var(--muted)}
+.chip{display:inline-block;padding:2px 9px;border-radius:999px;font-size:10px;font-weight:700;letter-spacing:.3px;white-space:nowrap}
+.chip.BLOCK,.chip.BLOCKED{background:rgba(255,95,109,.15);color:var(--block)}
+.chip.ASK,.chip.PENDING_APPROVAL{background:rgba(255,176,32,.15);color:var(--ask)}
+.chip.ALLOW,.chip.COMPLETED,.chip.APPROVED{background:rgba(62,213,152,.13);color:var(--allow)}
+.chip.SHADOW{background:rgba(131,152,179,.15);color:var(--muted)}
+.chip.FAILED{background:rgba(255,95,109,.15);color:var(--block)}
+.cite{display:inline-block;font-size:10px;color:var(--accent);background:rgba(79,156,249,.1);padding:2px 7px;border-radius:4px;font-family:Consolas,monospace}
+.reason{color:var(--muted);font-size:11.5px;max-width:50ch}
+code.io{display:block;color:#a8c3e0;font-family:Consolas,monospace;font-size:11px;background:#0a1424;border:1px solid var(--line);border-radius:6px;padding:7px 10px;margin-top:5px;white-space:pre-wrap;word-break:break-all;max-height:180px;overflow-y:auto}
+.empty{color:var(--muted);text-align:center;padding:30px;font-size:13px}
+.pill{display:inline-flex;align-items:center;gap:7px;padding:6px 12px;border-radius:999px;font-size:12px;font-weight:600}
+.pill.ok{background:rgba(62,213,152,.12);color:var(--allow);border:1px solid rgba(62,213,152,.35)}
+.pill.bad{background:rgba(255,95,109,.12);color:var(--block);border:1px solid rgba(255,95,109,.4)}
+.back-btn{background:none;border:none;color:var(--accent);font-weight:600;font-size:12.5px;cursor:pointer;padding:0;margin-bottom:14px}
 
-  .panel {
-    background: var(--panel); border: 1px solid var(--line);
-    border-radius: 12px; padding: 17px; margin-bottom: 18px;
-  }
-  .panel h2 { font-size: 14px; margin-bottom: 4px; }
-  .panel .sub { color: var(--muted); font-size: 12px; margin-bottom: 14px; }
+/* ═══════════════════════════════════════════════════════════════════
+   6. LIVE MONITOR TIMELINE
+   ═══════════════════════════════════════════════════════════════════ */
+.tl-row{display:flex;align-items:flex-start;gap:10px;padding:7px 12px;border-bottom:1px solid rgba(36,53,79,.4);font-size:12.5px;transition:background .1s}
+.tl-row:hover{background:var(--panel-2)}
+.tl-ts{flex-shrink:0;width:90px;font-family:Consolas,monospace;font-size:11.5px;color:var(--muted)}
+.tl-tool{flex-shrink:0;width:150px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tl-dec{flex-shrink:0;width:90px}
+.tl-trace{flex:1;font-family:Consolas,monospace;font-size:11px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tl-detail{font-size:11px;color:var(--muted)}
+.monitor-header{display:flex;align-items:center;gap:14px;margin-bottom:14px;flex-wrap:wrap}
+.monitor-header .stats{display:flex;gap:16px;font-size:12px;color:var(--muted)}
+.monitor-header .stats b{color:var(--text);font-variant-numeric:tabular-nums}
 
-  table { width: 100%; border-collapse: collapse; }
-  th {
-    text-align: left; color: var(--muted); font-size: 10.5px; font-weight: 600;
-    text-transform: uppercase; letter-spacing: .6px;
-    padding: 8px 10px; border-bottom: 1px solid var(--line); white-space: nowrap;
-  }
-  td { padding: 9px 10px; border-bottom: 1px solid rgba(36,53,79,.55); font-size: 12.5px; vertical-align: top; }
-  tr.click { cursor: pointer; }
-  tr.click:hover td { background: var(--panel-2); }
-  .mono { font-family: Consolas, "SF Mono", monospace; font-size: 11.5px; color: var(--muted); }
+/* ═══════════════════════════════════════════════════════════════════
+   7. DAG VISUALIZATION
+   ═══════════════════════════════════════════════════════════════════ */
+.dag-container{overflow:auto;background:#0a1424;border:1px solid var(--line);border-radius:8px;margin-bottom:16px;min-height:100px;padding:10px}
+.dag-container svg{display:block;margin:0 auto}
+.dag-container svg .dag-node{cursor:pointer}
+.dag-container svg .dag-node:hover rect{stroke-width:2.5}
+.dag-container svg .dag-node.selected rect{stroke-width:3;filter:drop-shadow(0 0 6px currentColor)}
 
-  .chip {
-    display: inline-block; padding: 3px 9px; border-radius: 999px;
-    font-size: 10.5px; font-weight: 700; letter-spacing: .4px; white-space: nowrap;
-  }
-  .chip.BLOCK { background: rgba(255,95,109,.15); color: var(--block); }
-  .chip.ASK   { background: rgba(255,176,32,.15); color: var(--ask); }
-  .chip.ALLOW { background: rgba(62,213,152,.13); color: var(--allow); }
-  .chip.SHADOW{ background: rgba(131,152,179,.15); color: var(--muted); }
-  .cite {
-    display: inline-block; font-size: 10.5px; color: var(--accent);
-    background: rgba(79,156,249,.11); padding: 2px 8px; border-radius: 4px;
-    font-family: Consolas, monospace;
-  }
+/* ═══════════════════════════════════════════════════════════════════
+   8. DRAWER DETAIL PANEL
+   ═══════════════════════════════════════════════════════════════════ */
+.dr-close{background:none;border:none;color:var(--muted);font-size:22px;cursor:pointer;float:right;padding:0 4px;line-height:1}
+.dr-close:hover{color:var(--text)}
+.dr-title{font-size:16px;font-weight:700;margin-bottom:4px}
+.dr-subtitle{color:var(--muted);font-size:12px;margin-bottom:16px}
+.dr-section{margin-bottom:16px}
+.dr-section h3{font-size:12px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin-bottom:6px;padding-bottom:4px;border-bottom:1px solid var(--line)}
+.dr-field{display:flex;justify-content:space-between;padding:4px 0;font-size:12.5px;border-bottom:1px solid rgba(36,53,79,.3)}
+.dr-field .lbl{color:var(--muted);flex-shrink:0;margin-right:12px}
+.dr-field .val{text-align:right;word-break:break-all;font-family:Consolas,monospace;font-size:11.5px}
+.dr-log-row{font-size:11.5px;font-family:Consolas,monospace;padding:4px 0;border-bottom:1px solid rgba(36,53,79,.25);line-height:1.4}
+.dr-log-ts{color:var(--muted)}
+.dr-log-lvl{font-weight:700}
+.dr-log-lvl.INFO{color:var(--accent)}
+.dr-log-lvl.WARN{color:var(--ask)}
+.dr-log-lvl.ERROR{color:var(--block)}
+.dr-not-exec{background:rgba(255,95,109,.1);border:1px solid rgba(255,95,109,.3);border-radius:6px;padding:10px 12px;color:var(--block);font-weight:600;font-size:12.5px;margin-top:8px;display:flex;align-items:center;gap:8px}
 
-  .bar-row { display: grid; grid-template-columns: 1fr 46px; gap: 10px; align-items: center; margin-bottom: 11px; }
-  .bar-label { font-size: 12px; }
-  .bar-label .pid { color: var(--muted); font-size: 11px; font-family: Consolas, monospace; }
-  .bar-track { background: var(--panel-2); border-radius: 5px; height: 7px; margin-top: 5px; overflow: hidden; }
-  .bar-fill { height: 100%; background: var(--accent); border-radius: 5px; }
-  .bar-n { text-align: right; color: var(--muted); font-variant-numeric: tabular-nums; }
+/* ═══════════════════════════════════════════════════════════════════
+   9. PLACEHOLDER BANNER
+   ═══════════════════════════════════════════════════════════════════ */
+.placeholder-banner{background:var(--panel-2);border:1px dashed var(--line);border-radius:10px;padding:30px 24px;text-align:center;margin:24px 0}
+.placeholder-banner .icon{font-size:32px;margin-bottom:8px;opacity:.5}
+.placeholder-banner h3{font-size:15px;margin-bottom:6px}
+.placeholder-banner p{color:var(--muted);font-size:13px;max-width:50ch;margin:0 auto}
 
-  .filters { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
-  .filters button {
-    background: transparent; border: 1px solid var(--line); color: var(--muted);
-    padding: 5px 12px; border-radius: 7px; font-size: 12px; font-weight: 600; cursor: pointer;
-  }
-  .filters button.on { background: var(--accent); border-color: var(--accent); color: #062744; }
+/* ═══════════════════════════════════════════════════════════════════
+   10. BAR CHARTS, FILTERS
+   ═══════════════════════════════════════════════════════════════════ */
+.bar-row{display:grid;grid-template-columns:1fr 46px;gap:10px;align-items:center;margin-bottom:10px}
+.bar-label{font-size:12px}
+.bar-label .pid{color:var(--muted);font-size:11px;font-family:Consolas,monospace}
+.bar-track{background:var(--panel-2);border-radius:5px;height:6px;margin-top:4px;overflow:hidden}
+.bar-fill{height:100%;background:var(--accent);border-radius:5px}
+.bar-n{text-align:right;color:var(--muted);font-variant-numeric:tabular-nums}
+.filters{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:10px}
+.filters button{background:transparent;border:1px solid var(--line);color:var(--muted);padding:4px 11px;border-radius:6px;font-size:11.5px;font-weight:600;cursor:pointer}
+.filters button.on{background:var(--accent);border-color:var(--accent);color:#062744}
 
-  .back { background: none; border: none; color: var(--accent); font-weight: 600;
-          font-size: 12.5px; cursor: pointer; padding: 0; margin-bottom: 12px; }
-  .empty { color: var(--muted); text-align: center; padding: 26px; font-size: 13px; }
-  .reason { color: var(--muted); font-size: 11.5px; max-width: 48ch; }
-  .redact { color: var(--mask); font-family: Consolas, monospace; font-size: 11px; }
-  code.io {
-    display: block; color: #a8c3e0; font-family: Consolas, monospace; font-size: 11px;
-    background: #0a1424; border: 1px solid var(--line); border-radius: 6px;
-    padding: 8px 10px; margin-top: 6px; white-space: pre-wrap; word-break: break-all;
-  }
+/* ═══════════════════════════════════════════════════════════════════
+   11. SCROLLBAR & MISC
+   ═══════════════════════════════════════════════════════════════════ */
+::-webkit-scrollbar{width:7px;height:7px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--line);border-radius:4px}
+::-webkit-scrollbar-thumb:hover{background:var(--muted)}
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media(max-width:1100px){.cols{grid-template-columns:1fr}}
+.flex-between{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px}
 </style>
 </head>
 <body>
-<div class="wrap">
 
-  <header>
-    <div>
-      <div class="logo">Agent<span>Assure</span></div>
-      <div class="tagline">Runtime governance &amp; assurance layer for AI agents</div>
+<!-- ═══════════════════════════════════════════════════════════════════
+     HTML STRUCTURE
+     ═══════════════════════════════════════════════════════════════════ -->
+<div id="app">
+  <!-- Sidebar -->
+  <nav id="sidebar">
+    <div class="sb-logo">Agent<span>Assure</span></div>
+    <div class="sb-tag">Operator Console</div>
+    <ul class="sb-nav">
+      <li><a href="#overview" data-route="overview"><span class="icon">▣</span> Overview</a></li>
+      <li><a href="#monitor" data-route="monitor"><span class="icon">⚡</span> Live Monitor</a></li>
+      <li><a href="#traces" data-route="traces"><span class="icon">☰</span> Traces</a></li>
+      <li><div class="sb-sep"></div></li>
+      <li><a href="#policies" data-route="policies" class="p3"><span class="icon">⚙</span> Policies</a></li>
+      <li><a href="#approvals" data-route="approvals" class="p3"><span class="icon">☐</span> Approvals</a></li>
+      <li><div class="sb-sep"></div></li>
+      <li><a href="#evidence" data-route="evidence"><span class="icon">⛓</span> Evidence</a></li>
+    </ul>
+    <div class="sb-status" id="ws-status">
+      <span class="sb-dot off" id="ws-dot"></span>
+      <span id="ws-label">Disconnected</span>
     </div>
-    <div class="spacer"></div>
-    <span id="chain" class="pill ok"><span class="dot"></span>checking…</span>
-    <span id="stamp" class="stamp"></span>
-  </header>
+  </nav>
 
-  <div class="cards" id="cards"></div>
-
-  <div class="cols">
-    <div class="panel">
-      <h2>Control coverage</h2>
-      <p class="sub">Enforcement actions grouped by the clause they evidence.</p>
-      <div id="controls"></div>
-    </div>
-
-    <div class="panel">
-      <h2>Agent runs</h2>
-      <p class="sub">One row per trace. Click to open its decision trail.</p>
-      <div id="traces"></div>
-    </div>
-  </div>
-
-  <div class="panel">
-    <h2 id="evTitle">Evidence records</h2>
-    <p class="sub" id="evSub">Every governed event, hash-chained in order.</p>
-    <button class="back" id="back" style="display:none">&larr; All records</button>
-    <div class="filters" id="filters"></div>
-    <div id="evidence"></div>
-  </div>
-
+  <!-- Main content -->
+  <div id="main"></div>
 </div>
 
+<!-- Detail drawer overlay -->
+<div id="drawer-overlay" onclick="Drawer.close()"></div>
+<div id="drawer"></div>
+
 <script>
+/* ═══════════════════════════════════════════════════════════════════
+   1. STATE & CONFIGURATION
+   ═══════════════════════════════════════════════════════════════════ */
+const S = {
+  route: 'overview',
+  routeParam: null,
+  stats: null,
+  traces: [],
+  liveEvents: [],
+  liveEventIds: new Set(),
+  selectedTraceId: null,
+  selectedTraceEvents: [],
+  selectedNodeSpanId: null,
+  wsConnected: false,
+  evidenceFilter: 'ALL',
+  refreshTimer: null,
+};
+
+/* ═══════════════════════════════════════════════════════════════════
+   2. UTILITY HELPERS
+   ═══════════════════════════════════════════════════════════════════ */
 const $ = id => document.getElementById(id);
-let FILTER = "ALL";
-let TRACE = null;
-
-async function get(path) {
-  const r = await fetch(path);
-  if (!r.ok) throw new Error(path + " -> " + r.status);
-  return r.json();
+function esc(s){ return String(s??'').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+function shortTs(ts){ return String(ts||'').slice(11,23); }
+function fmtDuration(ms){ if(ms==null) return '—'; if(ms<1000) return ms+'ms'; return (ms/1000).toFixed(2)+'s'; }
+function truncate(s,n){ s=String(s||''); return s.length>n ? s.slice(0,n)+'…' : s; }
+function fmtJson(v){ if(v==null) return '—'; if(typeof v==='string'){ try{v=JSON.parse(v)}catch(e){return v;} } try{return JSON.stringify(v,null,2)}catch(e){return String(v)} }
+function statusIcon(decision,status){
+  if(decision==='BLOCK') return '✗';
+  if(decision==='ASK') return '⏸';
+  if(status==='blocked'||status==='BLOCKED') return '✗';
+  if(status==='pending_approval'||status==='PENDING_APPROVAL') return '⏸';
+  if(status==='failed'||status==='FAILED') return '⚠';
+  if(status==='completed'||status==='COMPLETED'||decision==='ALLOW') return '✓';
+  return '●';
 }
-
-function esc(s) {
-  return String(s ?? "").replace(/[&<>"]/g, c =>
-    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+function statusColor(decision,status){
+  if(decision==='BLOCK'||status==='blocked'||status==='BLOCKED') return 'var(--block)';
+  if(decision==='ASK'||status==='pending_approval'||status==='PENDING_APPROVAL') return 'var(--ask)';
+  if(status==='failed'||status==='FAILED') return 'var(--block)';
+  if(decision==='ALLOW'||status==='completed'||status==='COMPLETED') return 'var(--allow)';
+  return 'var(--accent)';
 }
+function chipClass(s){ return (s||'').replace(/\s+/g,'_'); }
+function isBlocked(span){ return span.decision==='BLOCK' || span.status==='blocked'; }
 
-function shortTime(ts) {
-  return String(ts || "").slice(11, 19);
-}
+/* ═══════════════════════════════════════════════════════════════════
+   3. API CLIENT
+   ═══════════════════════════════════════════════════════════════════ */
+const API = {
+  async get(path){
+    const r = await fetch(path);
+    if(!r.ok) throw new Error(`${path} → ${r.status}`);
+    return r.json();
+  },
+  stats()       { return this.get('/api/v1/stats'); },
+  traces()      { return this.get('/traces'); },
+  traceDetail(id){ return this.get('/traces/'+encodeURIComponent(id)); },
+  traceEvents(id){ return this.get('/traces/'+encodeURIComponent(id)+'/events'); },
+  event(id)     { return this.get('/events/'+encodeURIComponent(id)); },
+  policies()    { return this.get('/policies'); },
+  approvals(p)  { const q=new URLSearchParams(p||{}).toString(); return this.get('/approvals'+(q?'?'+q:'')); },
+  evidence(tid) { return this.get('/evidence/'+encodeURIComponent(tid)); },
+  verify(tid)   { return this.get('/evidence/'+encodeURIComponent(tid)+'/verify'); },
+  logs(p)       { const q=new URLSearchParams(p||{}).toString(); return this.get('/logs'+(q?'?'+q:'')); },
+  health()      { return this.get('/health'); },
+};
 
-function renderCards(s) {
-  const cards = [
-    ["Evidence records", s.records, ""],
-    ["Agent runs", s.traces, ""],
-    ["Actions blocked", s.blocked, "block"],
-    ["Pending approval", s.pending_approval, "ask"],
-    ["PII masked at rest", s.redactions, "mask"],
-    ["Records cited", s.cited, "allow"],
-  ];
-  $("cards").innerHTML = cards.map(([k, v, cls]) =>
-    `<div class="card ${cls}"><div class="k">${k}</div><div class="v">${v}</div></div>`
-  ).join("");
-}
+/* ═══════════════════════════════════════════════════════════════════
+   4. WEBSOCKET MANAGER
+   ═══════════════════════════════════════════════════════════════════ */
+const WS = {
+  socket: null,
+  delay: 1000,
+  maxDelay: 30000,
+  timer: null,
+  pingTimer: null,
 
-function renderChain(s) {
-  const el = $("chain");
-  const ok = s.chain.is_valid;
-  el.className = "pill " + (ok ? "ok" : "bad");
-  el.innerHTML = `<span class="dot"></span>` + (ok
-    ? `Evidence chain intact &middot; ${s.records} records`
-    : `TAMPER DETECTED &middot; ${s.chain.errors.length} error(s)`);
-  $("stamp").textContent = "re-verified " + new Date().toLocaleTimeString();
-}
+  connect(){
+    if(this.socket && this.socket.readyState <= 1) return;
+    const proto = location.protocol==='https:'?'wss':'ws';
+    const url = `${proto}://${location.host}/ws/events`;
+    try { this.socket = new WebSocket(url); } catch(e){ this.scheduleReconnect(); return; }
 
-function renderControls(s) {
-  if (!s.by_control.length) {
-    $("controls").innerHTML = `<div class="empty">No enforcement actions recorded yet.</div>`;
-    return;
+    this.socket.onopen = () => {
+      S.wsConnected = true;
+      this.delay = 1000;
+      this._updateIndicator();
+      // Start keepalive ping
+      this.pingTimer = setInterval(()=>{ try{this.socket.send('ping')}catch(e){} }, 25000);
+    };
+
+    this.socket.onmessage = (e) => {
+      try{
+        const data = JSON.parse(e.data);
+        if(data.type==='connected') return; // greeting
+        if(typeof data==='string' && data==='pong') return;
+        this._handleEvent(data);
+      }catch(err){}
+    };
+
+    this.socket.onclose = () => {
+      S.wsConnected = false;
+      clearInterval(this.pingTimer);
+      this._updateIndicator();
+      this.scheduleReconnect();
+    };
+
+    this.socket.onerror = () => {
+      S.wsConnected = false;
+      this._updateIndicator();
+    };
+  },
+
+  scheduleReconnect(){
+    if(this.timer) clearTimeout(this.timer);
+    $('ws-label').textContent = `Reconnecting (${Math.round(this.delay/1000)}s)…`;
+    $('ws-dot').className = 'sb-dot re';
+    this.timer = setTimeout(()=>{ this.connect(); }, this.delay);
+    this.delay = Math.min(this.delay * 1.5, this.maxDelay);
+  },
+
+  _handleEvent(data){
+    const eid = data.event_id;
+    if(eid && !S.liveEventIds.has(eid)){
+      S.liveEventIds.add(eid);
+      S.liveEvents.unshift(data);
+      if(S.liveEvents.length > 500) S.liveEvents.pop();
+    }
+    // Auto-update views if relevant
+    if(S.route==='monitor') Views.monitor();
+    if(S.route==='trace-detail' && S.routeParam && data.trace_id === S.routeParam){
+      // Merge into selected trace events
+      if(eid && !S.selectedTraceEvents.find(e=>e.event_id===eid)){
+        S.selectedTraceEvents.push(data);
+        Views.traceDetail(S.routeParam);
+      }
+    }
+  },
+
+  _updateIndicator(){
+    const dot = $('ws-dot');
+    const lbl = $('ws-label');
+    if(S.wsConnected){ dot.className='sb-dot on'; lbl.textContent='Live'; }
+    else { dot.className='sb-dot off'; lbl.textContent='Disconnected'; }
+  },
+
+  disconnect(){
+    if(this.socket) try{this.socket.close()}catch(e){}
+    clearInterval(this.pingTimer);
+    clearTimeout(this.timer);
   }
-  const max = Math.max(...s.by_control.map(c => c.count));
-  $("controls").innerHTML = s.by_control.map(c => `
-    <div class="bar-row">
-      <div>
-        <div class="bar-label">${esc(c.citation)}
-          <span class="pid">${esc(c.policies.join(", "))}</span></div>
-        <div class="bar-track"><div class="bar-fill" style="width:${(c.count / max) * 100}%"></div></div>
-      </div>
-      <div class="bar-n">${c.count}</div>
-    </div>`).join("");
-}
+};
 
-function renderTraces(rows) {
-  if (!rows.length) {
-    $("traces").innerHTML = `<div class="empty">No runs yet — run <code>python demo/loan_agent.py</code></div>`;
-    return;
-  }
-  $("traces").innerHTML = `<table><thead><tr>
-      <th>Trace</th><th>Session</th><th>Started</th><th>Events</th><th>Status</th>
-    </tr></thead><tbody>` + rows.map(t => {
-      const status = t.blocked ? `<span class="chip BLOCK">blocked</span>`
-        : t.pending ? `<span class="chip ASK">pending</span>`
-        : `<span class="chip ALLOW">clean</span>`;
-      return `<tr class="click" data-trace="${esc(t.trace_id)}">
-        <td class="mono">${esc(t.trace_id)}</td>
-        <td class="mono">${esc(t.session_id)}</td>
-        <td class="mono">${shortTime(t.started_at)}</td>
-        <td>${t.records}</td><td>${status}</td></tr>`;
-    }).join("") + `</tbody></table>`;
+/* ═══════════════════════════════════════════════════════════════════
+   5. ROUTER
+   ═══════════════════════════════════════════════════════════════════ */
+function navigate(route, param){
+  S.route = route;
+  S.routeParam = param || null;
 
-  $("traces").querySelectorAll("tr.click").forEach(tr =>
-    tr.onclick = () => { TRACE = tr.dataset.trace; FILTER = "ALL"; refresh(); });
-}
+  // Update nav active state
+  document.querySelectorAll('.sb-nav a').forEach(a => {
+    const r = a.dataset.route;
+    a.classList.toggle('active', r===route || (route==='trace-detail' && r==='traces'));
+  });
 
-function renderFilters(records) {
-  const counts = { ALL: records.length };
-  records.forEach(r => { if (r.decision) counts[r.decision] = (counts[r.decision] || 0) + 1; });
-  const order = ["ALL", "BLOCK", "ASK", "ALLOW", "SHADOW"];
-  $("filters").innerHTML = order.filter(k => counts[k]).map(k =>
-    `<button class="${FILTER === k ? "on" : ""}" data-f="${k}">${k} (${counts[k]})</button>`
-  ).join("");
-  $("filters").querySelectorAll("button").forEach(b =>
-    b.onclick = () => { FILTER = b.dataset.f; refresh(); });
-}
+  // Render view
+  const main = $('main');
+  Drawer.close();
 
-function renderEvidence(records) {
-  const rows = FILTER === "ALL" ? records : records.filter(r => r.decision === FILTER);
-  if (!rows.length) {
-    $("evidence").innerHTML = `<div class="empty">No records match this filter.</div>`;
-    return;
-  }
-  $("evidence").innerHTML = `<table><thead><tr>
-      <th>#</th><th>Time</th><th>Event</th><th>Tool</th><th>Decision</th>
-      <th>Policy</th><th>Control cited</th><th>Reason</th><th>Hash</th>
-    </tr></thead><tbody>` + rows.map(r => `
-      <tr>
-        <td class="mono">${r.id}</td>
-        <td class="mono">${shortTime(r.timestamp)}</td>
-        <td class="mono">${esc(r.event_type)}</td>
-        <td>${esc(r.tool_name || "—")}
-          ${r.redactions ? `<div class="redact">${r.redactions} PII masked</div>` : ""}</td>
-        <td>${r.decision ? `<span class="chip ${esc(r.decision)}">${esc(r.decision)}</span>` : "—"}</td>
-        <td class="mono">${esc(r.policy_id || "—")}</td>
-        <td>${r.controls ? `<span class="cite">${esc(r.controls)}</span>` : "—"}</td>
-        <td class="reason">${esc((r.reason || "").slice(0, 120))}</td>
-        <td class="mono">${esc((r.record_hash || "").slice(0, 10))}…</td>
-      </tr>
-      ${TRACE && (r.input || r.output) ? `<tr><td></td><td colspan="8">
-        ${r.input ? `<code class="io">in  ${esc(r.input)}</code>` : ""}
-        ${r.output ? `<code class="io">out ${esc(r.output)}</code>` : ""}
-      </td></tr>` : ""}
-    `).join("") + `</tbody></table>`;
-}
-
-async function refresh() {
-  try {
-    const [stats, traces] = await Promise.all([
-      get("/api/v1/stats"), get("/api/v1/traces"),
-    ]);
-    renderCards(stats);
-    renderChain(stats);
-    renderControls(stats);
-    renderTraces(traces);
-
-    const path = TRACE ? `/api/v1/evidence?trace_id=${encodeURIComponent(TRACE)}`
-                       : "/api/v1/evidence";
-    const records = await get(path);
-    $("evTitle").textContent = TRACE ? `Decision trail — ${TRACE}` : "Evidence records";
-    $("evSub").textContent = TRACE
-      ? "Every event in this run, in execution order, with recorded inputs and outputs."
-      : "Every governed event, hash-chained in order.";
-    $("back").style.display = TRACE ? "inline-block" : "none";
-    renderFilters(records);
-    renderEvidence(records);
-  } catch (e) {
-    $("chain").className = "pill bad";
-    $("chain").innerHTML = `<span class="dot"></span>API unreachable`;
+  switch(route){
+    case 'overview':   Views.overview(); break;
+    case 'monitor':    Views.monitor(); break;
+    case 'traces':     Views.traceList(); break;
+    case 'trace-detail': Views.traceDetail(param); break;
+    case 'policies':   Views.policies(); break;
+    case 'approvals':  Views.approvals(); break;
+    case 'evidence':   Views.evidence(); break;
+    default:           Views.overview();
   }
 }
 
-$("back").onclick = () => { TRACE = null; FILTER = "ALL"; refresh(); };
-refresh();
-setInterval(refresh, 2000);
+// Hash-based routing
+function initRouter(){
+  window.addEventListener('hashchange', () => {
+    const hash = location.hash.slice(1) || 'overview';
+    const parts = hash.split('/');
+    navigate(parts[0], parts.slice(1).join('/') || null);
+  });
+  const hash = location.hash.slice(1) || 'overview';
+  const parts = hash.split('/');
+  navigate(parts[0], parts.slice(1).join('/') || null);
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   6. DAG ENGINE — Build, Layout, Render from span relationships
+   ═══════════════════════════════════════════════════════════════════ */
+const DECISION_PRI = { BLOCK:4, ASK:3, SHADOW:2, ALLOW:1 };
+
+const DAG = {
+  /**
+   * Build a directed acyclic graph from trace events.
+   * Groups events by span_id, determines status per span,
+   * and constructs parent-child edges from parent_span_id.
+   */
+  build(events){
+    if(!events || !events.length) return { roots:[], nodes:[], spanMap:{} };
+
+    const spanMap = {};
+    events.forEach(evt => {
+      const sid = evt.span_id;
+      if(!sid) return;
+      if(!spanMap[sid]){
+        spanMap[sid] = {
+          span_id: sid,
+          parent_span_id: evt.parent_span_id || null,
+          tool_name: null, decision: null, status: null,
+          event_type: null, policy_id: null, policy_version: null,
+          reason: null, controls: null, input: null, output: null,
+          timestamp: evt.timestamp, events: [], children: [],
+          isSynthetic: false, executed: true
+        };
+      }
+      const span = spanMap[sid];
+      span.events.push(evt);
+
+      if(evt.tool_name) span.tool_name = evt.tool_name;
+      if(evt.parent_span_id) span.parent_span_id = evt.parent_span_id;
+      if(evt.timestamp && (!span.timestamp || evt.timestamp > span.timestamp)) span.timestamp = evt.timestamp;
+      if(evt.input != null && span.input == null) span.input = evt.input;
+      if(evt.output != null) span.output = evt.output;
+      if(evt.controls) span.controls = evt.controls;
+
+      // Decision priority: BLOCK > ASK > SHADOW > ALLOW
+      if(evt.decision){
+        const pri = DECISION_PRI[evt.decision] || 0;
+        const curPri = DECISION_PRI[span.decision] || 0;
+        if(pri > curPri){
+          span.decision = evt.decision;
+          span.policy_id = evt.policy_id;
+          span.policy_version = evt.policy_version;
+          span.reason = evt.reason;
+        }
+      }
+
+      // Determine execution status
+      const et = evt.event_type;
+      const st = evt.status;
+      if(et==='tool_result' && st!=='failed') span.status = 'completed';
+      if(et==='policy_decision' && evt.decision==='BLOCK'){ span.status='blocked'; span.executed=false; }
+      if(et==='approval_requested'){ span.status='pending_approval'; span.executed=false; }
+      if(et==='error'||st==='failed') span.status = 'failed';
+      if(et==='tool_call' && !span.status) span.status = 'started';
+    });
+
+    // Find orphan parent_span_ids (synthetic roots)
+    const spanIds = new Set(Object.keys(spanMap));
+    const orphanParents = new Set();
+    Object.values(spanMap).forEach(s => {
+      if(s.parent_span_id && !spanIds.has(s.parent_span_id)){
+        orphanParents.add(s.parent_span_id);
+      }
+    });
+
+    orphanParents.forEach(pid => {
+      spanMap[pid] = {
+        span_id: pid, parent_span_id: null,
+        tool_name: 'Agent', decision: null, status: 'completed',
+        events: [], children: [], isSynthetic: true, executed: true,
+        timestamp: null, input: null, output: null,
+        policy_id: null, reason: null, controls: null
+      };
+    });
+
+    // Build children lists
+    const allSpans = Object.values(spanMap);
+    allSpans.forEach(s => { s.children = []; });
+
+    const roots = [];
+    allSpans.forEach(s => {
+      if(s.parent_span_id && spanMap[s.parent_span_id]){
+        spanMap[s.parent_span_id].children.push(s);
+      } else if(!s.parent_span_id){
+        roots.push(s);
+      }
+    });
+
+    // Sort children by timestamp
+    allSpans.forEach(s => {
+      s.children.sort((a,b) => (a.timestamp||'').localeCompare(b.timestamp||''));
+    });
+
+    // If only one synthetic root with children, keep it. If no roots, use all as flat.
+    if(roots.length===0){
+      // Fallback: treat all as roots
+      allSpans.filter(s=>!s.parent_span_id || !spanMap[s.parent_span_id]).forEach(s => roots.push(s));
+    }
+
+    return { roots, nodes: allSpans, spanMap };
+  },
+
+  /**
+   * Assign (x,y) positions to each node for SVG rendering.
+   * Uses layered tree layout.
+   */
+  layout(dag){
+    const NW = 190, NH = 56, HG = 28, VG = 65;
+
+    if(!dag.nodes.length) return Object.assign(dag, {width:200, height:80, NW, NH});
+
+    // BFS to assign depths
+    const visited = new Set();
+    const queue = dag.roots.map(r => ({node:r, depth:0}));
+    const levels = [];
+
+    while(queue.length){
+      const {node, depth} = queue.shift();
+      if(visited.has(node.span_id)) continue;
+      visited.add(node.span_id);
+      if(!levels[depth]) levels[depth] = [];
+      levels[depth].push(node);
+      node._depth = depth;
+      node.children.forEach(c => queue.push({node:c, depth:depth+1}));
+    }
+
+    // Also add any unvisited nodes (disconnected)
+    dag.nodes.forEach(n => {
+      if(!visited.has(n.span_id)){
+        if(!levels[0]) levels[0]=[];
+        levels[0].push(n);
+        n._depth = 0;
+      }
+    });
+
+    // Position nodes
+    const maxW = Math.max(...levels.map(l=>l.length), 1);
+    const totalW = maxW * (NW + HG);
+
+    levels.forEach((level, d) => {
+      const lw = level.length * (NW + HG);
+      const startX = (totalW - lw) / 2 + HG/2;
+      level.forEach((node, i) => {
+        node.x = startX + i*(NW + HG);
+        node.y = d*(NH + VG) + 20;
+      });
+    });
+
+    dag.width = Math.max(totalW + 20, 300);
+    dag.height = levels.length * (NH + VG) + 20;
+    dag.NW = NW;
+    dag.NH = NH;
+    return dag;
+  },
+
+  /**
+   * Render the positioned DAG as an SVG element inside `container`.
+   */
+  render(dag, container){
+    if(!dag.nodes.length){
+      container.innerHTML = '<div class="empty">No events to visualize.</div>';
+      return;
+    }
+
+    const ns = 'http://www.w3.org/2000/svg';
+    const svg = document.createElementNS(ns, 'svg');
+    svg.setAttribute('width', Math.max(dag.width, container.clientWidth - 20));
+    svg.setAttribute('height', dag.height);
+    svg.setAttribute('viewBox', `0 0 ${dag.width} ${dag.height}`);
+    svg.style.minWidth = dag.width + 'px';
+
+    const NW = dag.NW, NH = dag.NH;
+
+    // Draw edges first (behind nodes)
+    dag.nodes.forEach(node => {
+      node.children.forEach(child => {
+        if(node.x==null||child.x==null) return;
+        const x1 = node.x + NW/2, y1 = node.y + NH;
+        const x2 = child.x + NW/2, y2 = child.y;
+        const my = (y1+y2)/2;
+        const path = document.createElementNS(ns, 'path');
+        path.setAttribute('d', `M${x1} ${y1} C${x1} ${my}, ${x2} ${my}, ${x2} ${y2}`);
+        path.setAttribute('fill', 'none');
+        path.setAttribute('stroke', '#24354f');
+        path.setAttribute('stroke-width', '1.8');
+        svg.appendChild(path);
+      });
+    });
+
+    // Draw nodes
+    dag.nodes.forEach(node => {
+      if(node.x==null) return;
+      const g = document.createElementNS(ns, 'g');
+      g.setAttribute('class', 'dag-node' + (node.span_id===S.selectedNodeSpanId?' selected':''));
+      g.setAttribute('transform', `translate(${node.x},${node.y})`);
+
+      const sc = statusColor(node.decision, node.status);
+
+      // Background rect
+      const rect = document.createElementNS(ns, 'rect');
+      rect.setAttribute('width', NW);
+      rect.setAttribute('height', NH);
+      rect.setAttribute('rx', '8');
+      rect.setAttribute('fill', '#111c2e');
+      rect.setAttribute('stroke', sc);
+      rect.setAttribute('stroke-width', node.span_id===S.selectedNodeSpanId?'2.5':'1.4');
+      g.appendChild(rect);
+
+      // Left status bar
+      const bar = document.createElementNS(ns, 'rect');
+      bar.setAttribute('x', '0'); bar.setAttribute('y', '0');
+      bar.setAttribute('width', '4'); bar.setAttribute('height', NH);
+      bar.setAttribute('rx', '2');
+      bar.setAttribute('fill', sc);
+      g.appendChild(bar);
+
+      // Status icon
+      const ico = document.createElementNS(ns, 'text');
+      ico.setAttribute('x', '14'); ico.setAttribute('y', '22');
+      ico.setAttribute('font-size', '13'); ico.setAttribute('fill', sc);
+      ico.textContent = statusIcon(node.decision, node.status);
+      g.appendChild(ico);
+
+      // Tool name
+      const nm = document.createElementNS(ns, 'text');
+      nm.setAttribute('x', '30'); nm.setAttribute('y', '22');
+      nm.setAttribute('font-size', '12'); nm.setAttribute('font-weight', '600');
+      nm.setAttribute('fill', '#dbe5f2');
+      nm.textContent = truncate(node.tool_name || '(root)', 17);
+      g.appendChild(nm);
+
+      // Decision + status text
+      const lbl = document.createElementNS(ns, 'text');
+      lbl.setAttribute('x', '30'); lbl.setAttribute('y', '40');
+      lbl.setAttribute('font-size', '10'); lbl.setAttribute('font-weight', '600');
+      lbl.setAttribute('fill', sc);
+      let lblText = node.decision || '';
+      if(isBlocked(node)) lblText += ' · NOT EXECUTED';
+      else if(node.status==='pending_approval') lblText += ' · PENDING';
+      else if(node.status==='completed') lblText += node.decision ? '' : ' COMPLETED';
+      lbl.textContent = truncate(lblText, 24);
+      g.appendChild(lbl);
+
+      // Click handler
+      g.addEventListener('click', () => { S.selectedNodeSpanId = node.span_id; Drawer.open(node); DAG.render(dag, container); });
+
+      svg.appendChild(g);
+    });
+
+    container.innerHTML = '';
+    container.appendChild(svg);
+  }
+};
+
+/* ═══════════════════════════════════════════════════════════════════
+   7. VIEW RENDERERS
+   ═══════════════════════════════════════════════════════════════════ */
+const Views = {
+
+  /* ─────── OVERVIEW ─────── */
+  async overview(){
+    const main = $('main');
+    main.innerHTML = '<div class="page-title">Overview</div><div class="page-sub">Real-time governance summary from evidence store.</div><div id="ov-cards" class="cards"></div><div class="cols"><div id="ov-controls" class="panel"><h2>Control Coverage</h2><p class="sub">Enforcement actions by compliance control citation.</p><div id="ov-ctrl-body"></div></div><div id="ov-traces" class="panel"><h2>Recent Traces</h2><p class="sub">Latest agent runs. Click to inspect.</p><div id="ov-trace-body"></div></div></div><div class="panel"><div class="flex-between"><h2 id="ov-chain-title">Evidence Chain</h2><span id="ov-chain-pill" class="pill ok"><span class="sb-dot on"></span>checking…</span></div><p class="sub" id="ov-chain-sub"></p></div>';
+
+    try{
+      const [stats, traces] = await Promise.all([API.stats(), API.traces()]);
+      S.stats = stats;
+      S.traces = traces;
+      this._renderOvCards(stats);
+      this._renderOvControls(stats);
+      this._renderOvTraces(traces.slice(0,8));
+      this._renderOvChain(stats);
+    }catch(e){
+      main.innerHTML += `<div class="empty">Failed to load data: ${esc(e.message)}</div>`;
+    }
+  },
+
+  _renderOvCards(s){
+    const cards = [
+      ['Actions Observed', s.records, ''],
+      ['Traces', s.traces, ''],
+      ['Blocked Actions', s.blocked, 'block'],
+      ['Pending Approvals', s.pending_approval, 'ask'],
+      ['Allowed Actions', s.allowed, 'allow'],
+      ['PII Redactions', s.redactions, 'mask'],
+    ];
+    const el = $('ov-cards');
+    if(el) el.innerHTML = cards.map(([k,v,c])=>`<div class="card ${c}"><div class="k">${k}</div><div class="v">${v}</div></div>`).join('');
+  },
+
+  _renderOvControls(s){
+    const el = $('ov-ctrl-body');
+    if(!el) return;
+    if(!s.by_control || !s.by_control.length){ el.innerHTML='<div class="empty">No enforcement actions recorded.</div>'; return; }
+    const max = Math.max(...s.by_control.map(c=>c.count));
+    el.innerHTML = s.by_control.map(c=>`<div class="bar-row"><div><div class="bar-label">${esc(c.citation)} <span class="pid">${esc(c.policies.join(', '))}</span></div><div class="bar-track"><div class="bar-fill" style="width:${(c.count/max)*100}%"></div></div></div><div class="bar-n">${c.count}</div></div>`).join('');
+  },
+
+  _renderOvTraces(traces){
+    const el = $('ov-trace-body');
+    if(!el) return;
+    if(!traces.length){ el.innerHTML='<div class="empty">No runs yet. Run <code>python demo/dry_run_week2.py</code></div>'; return; }
+    el.innerHTML = `<table><thead><tr><th>Trace</th><th>Agent</th><th>Events</th><th>Status</th></tr></thead><tbody>${traces.map(t=>`<tr class="click" onclick="location.hash='trace-detail/${esc(t.trace_id)}'"><td class="mono">${esc(truncate(t.trace_id,16))}</td><td>${esc(t.agent_id)}</td><td>${t.events_count}</td><td><span class="chip ${chipClass(t.status)}">${esc(t.status)}</span></td></tr>`).join('')}</tbody></table>`;
+  },
+
+  _renderOvChain(s){
+    const pill = $('ov-chain-pill');
+    const sub = $('ov-chain-sub');
+    if(!pill) return;
+    const ok = s.chain && s.chain.is_valid;
+    pill.className = 'pill ' + (ok?'ok':'bad');
+    pill.innerHTML = `<span class="sb-dot ${ok?'on':'off'}"></span>` + (ok ? `Evidence chain: VERIFIED · ${s.records} records` : `TAMPER DETECTED · ${(s.chain?.errors||[]).length} error(s)`);
+    if(sub) sub.textContent = 'Last verified: ' + new Date().toLocaleTimeString();
+  },
+
+  /* ─────── LIVE MONITOR ─────── */
+  monitor(){
+    const main = $('main');
+    // Only rebuild structure if not already on monitor page
+    if(!$('monitor-timeline')){
+      main.innerHTML = `
+        <div class="page-title">Live Monitor</div>
+        <div class="page-sub">Real-time event stream from WebSocket. No refresh needed.</div>
+        <div class="monitor-header">
+          <span id="mon-status" class="pill ${S.wsConnected?'ok':'bad'}"><span class="sb-dot ${S.wsConnected?'on':'off'}"></span>${S.wsConnected?'Connected':'Disconnected'}</span>
+          <div class="stats">Events received: <b id="mon-count">${S.liveEvents.length}</b></div>
+        </div>
+        <div class="panel" style="max-height:calc(100vh - 180px);overflow-y:auto">
+          <div id="monitor-timeline"></div>
+        </div>`;
+    }
+
+    const cntEl = $('mon-count');
+    if(cntEl) cntEl.textContent = S.liveEvents.length;
+    const stEl = $('mon-status');
+    if(stEl){ stEl.className='pill '+(S.wsConnected?'ok':'bad'); stEl.innerHTML=`<span class="sb-dot ${S.wsConnected?'on':'off'}"></span>${S.wsConnected?'Connected':'Disconnected'}`; }
+
+    const tl = $('monitor-timeline');
+    if(!tl) return;
+    if(!S.liveEvents.length){ tl.innerHTML='<div class="empty">Waiting for live events… Run <code>python demo/dry_run_week2.py</code> while the server is running.</div>'; return; }
+
+    // Render timeline rows (newest first, already sorted)
+    tl.innerHTML = S.liveEvents.slice(0, 200).map(evt => {
+      const dec = evt.decision;
+      const icon = statusIcon(dec, evt.status);
+      const color = statusColor(dec, evt.status);
+      return `<div class="tl-row">
+        <span class="tl-ts">${shortTs(evt.timestamp)}</span>
+        <span class="tl-tool">${esc(evt.tool_name||evt.event_type||'—')}</span>
+        <span class="tl-dec">${dec?`<span class="chip ${chipClass(dec)}">${icon} ${dec}</span>`:''}</span>
+        <span class="tl-trace mono">${esc(evt.trace_id||'')}</span>
+      </div>`;
+    }).join('');
+  },
+
+  /* ─────── TRACE LIST ─────── */
+  async traceList(){
+    const main = $('main');
+    main.innerHTML = '<div class="page-title">Traces</div><div class="page-sub">Historical agent execution runs from evidence store.</div><div id="trace-list-body"></div>';
+
+    try{
+      const traces = await API.traces();
+      S.traces = traces;
+      const el = $('trace-list-body');
+      if(!traces.length){ el.innerHTML='<div class="empty">No traces recorded yet. Run <code>python demo/dry_run_week2.py</code></div>'; return; }
+
+      el.innerHTML = `<div class="panel"><table><thead><tr>
+        <th>Trace ID</th><th>Agent</th><th>Session</th><th>Started</th><th>Duration</th><th>Events</th><th>Blocked</th><th>Approvals</th><th>Status</th>
+      </tr></thead><tbody>${traces.map(t=>`<tr class="click" onclick="location.hash='trace-detail/${esc(t.trace_id)}'">
+        <td class="mono">${esc(truncate(t.trace_id,18))}</td>
+        <td>${esc(t.agent_id||'—')}</td>
+        <td class="mono">${esc(truncate(t.session_id||'',16))}</td>
+        <td class="mono">${shortTs(t.started_at)}</td>
+        <td>${fmtDuration(t.duration_ms)}</td>
+        <td>${t.events_count}</td>
+        <td>${t.blocked_count||0}</td>
+        <td>${t.approval_count||0}</td>
+        <td><span class="chip ${chipClass(t.status)}">${esc(t.status)}</span></td>
+      </tr>`).join('')}</tbody></table></div>`;
+    }catch(e){
+      $('trace-list-body').innerHTML = `<div class="empty">Failed to load traces: ${esc(e.message)}</div>`;
+    }
+  },
+
+  /* ─────── TRACE DETAIL + DAG ─────── */
+  async traceDetail(traceId){
+    if(!traceId){ navigate('traces'); return; }
+    const main = $('main');
+    main.innerHTML = `<button class="back-btn" onclick="location.hash='traces'">← Back to Traces</button>
+      <div class="page-title">Trace: <span class="mono">${esc(traceId)}</span></div>
+      <div class="page-sub" id="td-summary">Loading…</div>
+      <div id="td-dag-container" class="dag-container"></div>
+      <div class="panel"><h2>Event Timeline</h2><p class="sub">All events in execution order. Click to inspect.</p><div id="td-events"></div></div>`;
+
+    try{
+      const [detail, events] = await Promise.all([
+        API.traceDetail(traceId).catch(()=>null),
+        API.traceEvents(traceId)
+      ]);
+      S.selectedTraceId = traceId;
+      S.selectedTraceEvents = events;
+
+      // Summary
+      if(detail){
+        const sum = $('td-summary');
+        sum.innerHTML = `Agent: <b>${esc(detail.agent_id)}</b> · Session: <span class="mono">${esc(detail.session_id)}</span> · ${detail.event_count} events · Duration: ${fmtDuration(detail.duration_ms)} · Status: <span class="chip ${chipClass(detail.status)}">${esc(detail.status)}</span>`;
+      }
+
+      // Build and render DAG
+      const dag = DAG.build(events);
+      DAG.layout(dag);
+      const dagEl = $('td-dag-container');
+      DAG.render(dag, dagEl);
+      // Store dag for re-renders
+      S._currentDAG = dag;
+      S._currentDAGContainer = dagEl;
+
+      // Event timeline table
+      this._renderTraceEvents(events);
+    }catch(e){
+      main.innerHTML += `<div class="empty">Failed to load trace: ${esc(e.message)}</div>`;
+    }
+  },
+
+  _renderTraceEvents(events){
+    const el = $('td-events');
+    if(!el) return;
+    if(!events.length){ el.innerHTML='<div class="empty">No events.</div>'; return; }
+
+    el.innerHTML = `<table><thead><tr>
+      <th>Time</th><th>Type</th><th>Tool</th><th>Decision</th><th>Policy</th><th>Execution</th><th>Reason</th>
+    </tr></thead><tbody>${events.map(evt => {
+      const blocked = evt.decision==='BLOCK';
+      const execLabel = blocked ? '<span style="color:var(--block);font-weight:700">NOT EXECUTED</span>' : (evt.event_type==='tool_result'?'<span style="color:var(--allow)">Executed</span>' : (evt.status==='pending_approval'?'<span style="color:var(--ask)">Pending</span>':'—'));
+      return `<tr class="click" onclick="Drawer.openByEventId('${esc(evt.event_id)}','${esc(evt.span_id)}')">
+        <td class="mono">${shortTs(evt.timestamp)}</td>
+        <td class="mono">${esc(evt.event_type)}</td>
+        <td><b>${esc(evt.tool_name||'—')}</b></td>
+        <td>${evt.decision?`<span class="chip ${chipClass(evt.decision)}">${statusIcon(evt.decision,evt.status)} ${evt.decision}</span>`:''}</td>
+        <td class="mono">${esc(evt.policy_id||'—')}</td>
+        <td>${execLabel}</td>
+        <td class="reason">${esc(truncate(evt.reason||'',80))}</td>
+      </tr>`;
+    }).join('')}</tbody></table>`;
+  },
+
+  /* ─────── POLICIES (Person 3 placeholder) ─────── */
+  async policies(){
+    const main = $('main');
+    main.innerHTML = '<div class="page-title">Policies</div><div class="page-sub">Governance policy rules and capability boundaries.</div><div class="placeholder-banner"><div class="icon">⚙</div><h3>Policy Management — Person 3 Scope</h3><p>Policy editing, toggling, and version management will be implemented by Person 3. Current loaded policies are shown below (read-only).</p></div><div id="pol-body"></div>';
+
+    try{
+      const data = await API.policies();
+      const el = $('pol-body');
+      el.innerHTML = `<div class="panel"><h2>Loaded Rules (${data.total_rules})</h2><p class="sub">Read-only view of current policy configuration.</p>
+        <table><thead><tr><th>ID</th><th>Name</th><th>Action</th><th>Severity</th><th>Mode</th><th>Controls</th></tr></thead><tbody>
+        ${data.rules.map(r=>`<tr>
+          <td class="mono">${esc(r.id)}</td>
+          <td>${esc(r.name)}</td>
+          <td><span class="chip ${chipClass(r.action)}">${esc(r.action)}</span></td>
+          <td>${esc(r.severity)}</td>
+          <td>${esc(r.mode)}</td>
+          <td>${r.controls?`<span class="cite">${esc((r.controls.iso42001?'ISO 42001 '+r.controls.iso42001:'')+(r.controls.eu_ai_act?' | EU AI Act '+r.controls.eu_ai_act:''))}</span>`:'—'}</td>
+        </tr>`).join('')}
+        </tbody></table></div>
+        <div class="panel"><h2>Capability Boundaries</h2><p class="sub">Tool-level access control.</p>
+          <div style="display:flex;gap:14px;flex-wrap:wrap">
+            <div><b style="color:var(--allow)">Allowed:</b> ${(data.capabilities.allowed||[]).map(t=>`<span class="chip ALLOW">${esc(t)}</span>`).join(' ')}</div>
+            <div><b style="color:var(--ask)">Approval Required:</b> ${(data.capabilities.approval_required||[]).map(t=>`<span class="chip ASK">${esc(t)}</span>`).join(' ')}</div>
+            <div><b style="color:var(--block)">Forbidden:</b> ${(data.capabilities.forbidden||[]).map(t=>`<span class="chip BLOCK">${esc(t)}</span>`).join(' ')}</div>
+          </div>
+        </div>`;
+    }catch(e){
+      $('pol-body').innerHTML = `<div class="empty">Failed to load policies: ${esc(e.message)}</div>`;
+    }
+  },
+
+  /* ─────── APPROVALS (Person 3 placeholder) ─────── */
+  async approvals(){
+    const main = $('main');
+    main.innerHTML = '<div class="page-title">Approvals</div><div class="page-sub">Human-in-the-loop approval management.</div><div class="placeholder-banner"><div class="icon">☐</div><h3>Approval Management — Person 3 Scope</h3><p>Approve/reject workflows, approval history, and operator controls will be implemented by Person 3. Current approval state is shown below (read-only).</p></div><div id="appr-body"></div>';
+
+    try{
+      const approvals = await API.approvals();
+      const el = $('appr-body');
+      if(!approvals.length){ el.innerHTML='<div class="empty">No approvals recorded.</div>'; return; }
+
+      el.innerHTML = `<div class="panel"><h2>Approval Requests</h2><p class="sub">Read-only view. Person 3 will add approve/reject controls.</p>
+        <table><thead><tr><th>ID</th><th>Tool</th><th>Trace</th><th>Policy</th><th>Status</th><th>Created</th><th>Resolved By</th></tr></thead><tbody>
+        ${approvals.map(a=>`<tr>
+          <td class="mono">${esc(truncate(a.approval_id,16))}</td>
+          <td><b>${esc(a.tool_name)}</b></td>
+          <td class="mono">${esc(truncate(a.trace_id,14))}</td>
+          <td class="mono">${esc(a.policy_id||'—')}</td>
+          <td><span class="chip ${chipClass(a.status)}">${esc(a.status)}</span></td>
+          <td class="mono">${shortTs(a.created_at)}</td>
+          <td>${esc(a.resolved_by||'—')}</td>
+        </tr>`).join('')}
+        </tbody></table></div>`;
+    }catch(e){
+      $('appr-body').innerHTML = `<div class="empty">Failed to load approvals: ${esc(e.message)}</div>`;
+    }
+  },
+
+  /* ─────── EVIDENCE ─────── */
+  async evidence(){
+    const main = $('main');
+    main.innerHTML = '<div class="page-title">Evidence</div><div class="page-sub">Tamper-evident audit trail with SHA-256 hash chain verification.</div><div id="ev-trace-select"></div><div id="ev-body"></div>';
+
+    try{
+      const traces = await API.traces();
+      S.traces = traces;
+      const sel = $('ev-trace-select');
+      sel.innerHTML = '<div class="panel"><h2>Select Trace</h2><p class="sub">Choose a trace to inspect its evidence records and verify integrity.</p>' +
+        (!traces.length ? '<div class="empty">No traces available.</div>' :
+        `<table><thead><tr><th>Trace</th><th>Agent</th><th>Events</th><th>Status</th><th>Action</th></tr></thead><tbody>
+        ${traces.map(t=>`<tr>
+          <td class="mono">${esc(truncate(t.trace_id,18))}</td>
+          <td>${esc(t.agent_id)}</td>
+          <td>${t.events_count}</td>
+          <td><span class="chip ${chipClass(t.status)}">${esc(t.status)}</span></td>
+          <td><button onclick="Views._loadEvidence('${esc(t.trace_id)}')" style="background:var(--accent);color:#062744;border:none;padding:4px 12px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer">Inspect</button></td>
+        </tr>`).join('')}</tbody></table>`) + '</div>';
+    }catch(e){
+      $('ev-trace-select').innerHTML = `<div class="empty">Failed to load traces: ${esc(e.message)}</div>`;
+    }
+  },
+
+  async _loadEvidence(traceId){
+    const el = $('ev-body');
+    el.innerHTML = '<div class="empty">Loading evidence…</div>';
+
+    try{
+      const [records, verification] = await Promise.all([
+        API.evidence(traceId),
+        API.verify(traceId)
+      ]);
+
+      const ok = verification.valid;
+      el.innerHTML = `
+        <div class="panel">
+          <div class="flex-between" style="margin-bottom:12px">
+            <h2>Evidence — <span class="mono">${esc(truncate(traceId,20))}</span></h2>
+            <span class="pill ${ok?'ok':'bad'}"><span class="sb-dot ${ok?'on':'off'}"></span>
+              Evidence chain: ${ok?'VERIFIED':'FAILED'} · ${verification.records_checked} records checked
+            </span>
+          </div>
+          ${!ok?`<div class="dr-not-exec" style="margin-bottom:12px">⚠ ${verification.errors.length} integrity error(s) detected: ${esc(verification.errors.join('; '))}</div>`:''}
+          <table><thead><tr>
+            <th>Record</th><th>Time</th><th>Type</th><th>Tool</th><th>Decision</th><th>Policy</th><th>Controls</th><th>Redactions</th><th>Hash</th>
+          </tr></thead><tbody>
+          ${records.map(r=>`<tr>
+            <td class="mono">${esc(truncate(r.record_id||'',14))}</td>
+            <td class="mono">${shortTs(r.timestamp)}</td>
+            <td class="mono">${esc(r.event_type)}</td>
+            <td>${esc(r.tool_name||'—')}</td>
+            <td>${r.decision?`<span class="chip ${chipClass(r.decision)}">${esc(r.decision)}</span>`:''}</td>
+            <td class="mono">${esc(r.policy_id||'—')}</td>
+            <td>${r.controls?`<span class="cite">${esc(r.controls)}</span>`:'—'}</td>
+            <td>${r.redactions||0}</td>
+            <td class="mono">${esc(truncate(r.record_hash||'',12))}</td>
+          </tr>`).join('')}
+          </tbody></table>
+        </div>`;
+    }catch(e){
+      el.innerHTML = `<div class="empty">Failed to load evidence: ${esc(e.message)}</div>`;
+    }
+  },
+};
+
+/* ═══════════════════════════════════════════════════════════════════
+   8. DRILL-DOWN DRAWER
+   ═══════════════════════════════════════════════════════════════════ */
+const Drawer = {
+  async open(spanNode){
+    S.selectedNodeSpanId = spanNode.span_id;
+    const d = $('drawer');
+    const o = $('drawer-overlay');
+
+    let html = `<button class="dr-close" onclick="Drawer.close()">&times;</button>`;
+    html += `<div class="dr-title">${esc(spanNode.tool_name || 'Node')}</div>`;
+    html += `<div class="dr-subtitle">Span: <span class="mono">${esc(spanNode.span_id)}</span></div>`;
+
+    // Status section
+    html += `<div class="dr-section"><h3>Status</h3>`;
+    html += `<div class="dr-field"><span class="lbl">Decision</span><span class="val"><span class="chip ${chipClass(spanNode.decision||'')}">${statusIcon(spanNode.decision,spanNode.status)} ${esc(spanNode.decision||'—')}</span></span></div>`;
+    html += `<div class="dr-field"><span class="lbl">Tool</span><span class="val">${esc(spanNode.tool_name||'—')}</span></div>`;
+    html += `<div class="dr-field"><span class="lbl">Execution</span><span class="val" style="color:${isBlocked(spanNode)?'var(--block)':spanNode.status==='pending_approval'?'var(--ask)':'var(--allow)'}">${isBlocked(spanNode)?'NOT EXECUTED':spanNode.status==='pending_approval'?'PENDING APPROVAL':spanNode.executed?'EXECUTED':'—'}</span></div>`;
+    html += `<div class="dr-field"><span class="lbl">Timestamp</span><span class="val">${esc(spanNode.timestamp||'—')}</span></div>`;
+    html += `</div>`;
+
+    // NOT EXECUTED warning
+    if(isBlocked(spanNode)){
+      html += `<div class="dr-not-exec">✗ Tool execution was prevented by policy enforcement. The underlying function was NOT called.</div>`;
+    }
+    if(spanNode.status==='pending_approval'){
+      html += `<div class="dr-not-exec" style="background:rgba(255,176,32,.1);border-color:rgba(255,176,32,.3);color:var(--ask)">⏸ Tool execution suspended pending human approval.</div>`;
+    }
+
+    // Arguments section
+    if(spanNode.input != null){
+      html += `<div class="dr-section"><h3>Arguments</h3><code class="io">${esc(fmtJson(spanNode.input))}</code></div>`;
+    }
+
+    // Output section
+    if(spanNode.output != null && !isBlocked(spanNode)){
+      html += `<div class="dr-section"><h3>Output</h3><code class="io">${esc(fmtJson(spanNode.output))}</code></div>`;
+    }
+
+    // Policy section
+    if(spanNode.policy_id || spanNode.reason){
+      html += `<div class="dr-section"><h3>Policy Evaluation</h3>`;
+      if(spanNode.policy_id) html += `<div class="dr-field"><span class="lbl">Policy</span><span class="val">${esc(spanNode.policy_id)}</span></div>`;
+      if(spanNode.policy_version) html += `<div class="dr-field"><span class="lbl">Version</span><span class="val">v${spanNode.policy_version}</span></div>`;
+      if(spanNode.decision) html += `<div class="dr-field"><span class="lbl">Decision</span><span class="val">${esc(spanNode.decision)}</span></div>`;
+      if(spanNode.reason) html += `<div class="dr-field"><span class="lbl">Reason</span><span class="val" style="font-family:inherit;font-size:12px;max-width:260px">${esc(spanNode.reason)}</span></div>`;
+      if(spanNode.controls) html += `<div class="dr-field"><span class="lbl">Controls</span><span class="val"><span class="cite">${esc(spanNode.controls)}</span></span></div>`;
+      html += `</div>`;
+    }
+
+    // Correlated logs placeholder
+    html += `<div class="dr-section"><h3>Runtime Logs</h3><div id="dr-logs">Loading…</div></div>`;
+
+    // Evidence placeholder
+    html += `<div class="dr-section"><h3>Evidence Records</h3><div id="dr-evidence">Loading…</div></div>`;
+
+    d.innerHTML = html;
+    d.classList.add('open');
+    o.classList.add('open');
+
+    // Load correlated logs
+    this._loadLogs(spanNode);
+    // Load evidence for this span's events
+    this._loadSpanEvidence(spanNode);
+
+    // Re-render DAG with selection highlight
+    if(S._currentDAG && S._currentDAGContainer){
+      DAG.render(S._currentDAG, S._currentDAGContainer);
+    }
+  },
+
+  async openByEventId(eventId, spanId){
+    // Find span node from current trace events
+    if(S.selectedTraceEvents.length){
+      const spanEvents = S.selectedTraceEvents.filter(e => e.span_id === spanId);
+      if(spanEvents.length){
+        // Build a synthetic span node
+        const node = this._buildSpanFromEvents(spanEvents, spanId);
+        this.open(node);
+        return;
+      }
+    }
+    // Fallback: fetch event and build minimal node
+    try{
+      const evt = await API.event(eventId);
+      const node = this._buildSpanFromEvents([evt], spanId);
+      this.open(node);
+    }catch(e){}
+  },
+
+  _buildSpanFromEvents(events, spanId){
+    const node = {
+      span_id: spanId, parent_span_id: null,
+      tool_name: null, decision: null, status: null,
+      policy_id: null, policy_version: null, reason: null, controls: null,
+      input: null, output: null, timestamp: null, events: events,
+      executed: true, isSynthetic: false
+    };
+    events.forEach(evt => {
+      if(evt.tool_name) node.tool_name = evt.tool_name;
+      if(evt.parent_span_id) node.parent_span_id = evt.parent_span_id;
+      if(evt.timestamp) node.timestamp = evt.timestamp;
+      if(evt.input != null && node.input == null) node.input = evt.input;
+      if(evt.output != null) node.output = evt.output;
+      if(evt.controls) node.controls = evt.controls;
+      if(evt.decision){
+        const pri = DECISION_PRI[evt.decision]||0;
+        if(pri > (DECISION_PRI[node.decision]||0)){
+          node.decision = evt.decision;
+          node.policy_id = evt.policy_id;
+          node.policy_version = evt.policy_version;
+          node.reason = evt.reason;
+        }
+      }
+      if(evt.event_type==='tool_result') node.status = 'completed';
+      if(evt.event_type==='policy_decision' && evt.decision==='BLOCK'){ node.status='blocked'; node.executed=false; }
+      if(evt.event_type==='approval_requested'){ node.status='pending_approval'; node.executed=false; }
+    });
+    return node;
+  },
+
+  async _loadLogs(spanNode){
+    const el = $('dr-logs');
+    if(!el) return;
+    try{
+      // Load logs for each event in this span
+      const eventIds = spanNode.events.map(e=>e.event_id).filter(Boolean);
+      let logs = [];
+      if(eventIds.length){
+        // Get logs by trace_id and filter by span events
+        const traceId = spanNode.events[0]?.trace_id;
+        if(traceId){
+          const allLogs = await API.logs({trace_id: traceId, limit: 200});
+          logs = allLogs.filter(l => l.span_id === spanNode.span_id || eventIds.includes(l.event_id));
+        }
+      }
+      if(!logs.length){ el.innerHTML='<div class="empty" style="padding:8px">No correlated logs found.</div>'; return; }
+
+      el.innerHTML = logs.map(l => `<div class="dr-log-row">
+        <span class="dr-log-ts">${shortTs(l.timestamp)}</span>
+        <span class="dr-log-lvl ${esc(l.level)}">${esc(l.level)}</span>
+        <span style="color:var(--muted);margin:0 4px">${esc(l.component)}</span>
+        ${esc(l.message)}
+      </div>`).join('');
+    }catch(e){
+      el.innerHTML = `<div class="empty" style="padding:8px">Failed to load logs.</div>`;
+    }
+  },
+
+  async _loadSpanEvidence(spanNode){
+    const el = $('dr-evidence');
+    if(!el) return;
+    try{
+      const traceId = spanNode.events[0]?.trace_id;
+      if(!traceId){ el.innerHTML='<div class="empty" style="padding:8px">No trace context.</div>'; return; }
+
+      const records = await API.evidence(traceId);
+      const spanRecords = records.filter(r => r.span_id === spanNode.span_id);
+
+      if(!spanRecords.length){ el.innerHTML='<div class="empty" style="padding:8px">No evidence records for this span.</div>'; return; }
+
+      el.innerHTML = spanRecords.map(r => `<div style="background:#0a1424;border:1px solid var(--line);border-radius:6px;padding:10px;margin-bottom:8px;font-size:12px">
+        <div class="dr-field"><span class="lbl">Record ID</span><span class="val">${esc(r.record_id)}</span></div>
+        <div class="dr-field"><span class="lbl">Event Type</span><span class="val">${esc(r.event_type)}</span></div>
+        <div class="dr-field"><span class="lbl">Decision</span><span class="val">${r.decision?`<span class="chip ${chipClass(r.decision)}">${esc(r.decision)}</span>`:''}</span></div>
+        <div class="dr-field"><span class="lbl">Policy</span><span class="val">${esc(r.policy_id||'—')} ${r.policy_version?'v'+r.policy_version:''}</span></div>
+        ${r.controls?`<div class="dr-field"><span class="lbl">Controls</span><span class="val"><span class="cite">${esc(r.controls)}</span></span></div>`:''}
+        <div class="dr-field"><span class="lbl">Redactions</span><span class="val">${r.redactions||0}</span></div>
+        <div class="dr-field"><span class="lbl">Hash</span><span class="val mono">${esc(truncate(r.record_hash||'',20))}</span></div>
+      </div>`).join('');
+    }catch(e){
+      el.innerHTML = `<div class="empty" style="padding:8px">Failed to load evidence.</div>`;
+    }
+  },
+
+  close(){
+    S.selectedNodeSpanId = null;
+    $('drawer').classList.remove('open');
+    $('drawer-overlay').classList.remove('open');
+    // Re-render DAG without selection
+    if(S._currentDAG && S._currentDAGContainer){
+      DAG.render(S._currentDAG, S._currentDAGContainer);
+    }
+  }
+};
+
+/* ═══════════════════════════════════════════════════════════════════
+   9. PERIODIC REFRESH (for overview metrics)
+   ═══════════════════════════════════════════════════════════════════ */
+function startPeriodicRefresh(){
+  if(S.refreshTimer) clearInterval(S.refreshTimer);
+  S.refreshTimer = setInterval(()=>{
+    if(S.route==='overview') Views.overview();
+  }, 5000);
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   10. INITIALIZATION
+   ═══════════════════════════════════════════════════════════════════ */
+document.addEventListener('DOMContentLoaded', () => {
+  WS.connect();
+  initRouter();
+  startPeriodicRefresh();
+});
 </script>
 </body>
 </html>
