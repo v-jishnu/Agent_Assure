@@ -228,3 +228,70 @@ The governance console is deployed as a **read-only audit dashboard** over a com
 
 - `render.yaml` and `Procfile` are included for Render / Heroku-style hosts.
 - The server process requires **no model API keys** and makes zero LLM calls, ensuring fast boot times, zero quota burn, and total security isolation.
+
+---
+
+## Week 2 — Operator Dashboard & Visualization (Person 2)
+
+### Overview
+
+The governance console (`server/static/index.html`) has been upgraded from a basic polling-based stats page into a full **operator dashboard SPA** with live monitoring, execution DAG visualization, and drill-down capabilities — all using zero-build vanilla HTML5/CSS3/JS (no React, Node, or npm).
+
+### Dashboard Routes
+
+| Route | View | Description |
+| :--- | :--- | :--- |
+| `#overview` | Overview | Metric cards, control coverage, recent traces, evidence chain status |
+| `#monitor` | Live Monitor | Real-time WebSocket event stream — no polling |
+| `#traces` | Trace Explorer | Historical trace list with duration, event counts, status |
+| `#trace-detail/{id}` | Trace Detail | Interactive SVG DAG + event timeline + node drill-down |
+| `#policies` | Policies | Read-only policy view (placeholder for Person 3 editing) |
+| `#approvals` | Approvals | Read-only approval list (placeholder for Person 3 management) |
+| `#evidence` | Evidence | Per-trace evidence records with SHA-256 integrity verification |
+
+### Key Features
+
+- **Live WebSocket Monitor** — Connects to `/ws/events`, receives events in real time, auto-reconnects with exponential backoff (1s → 30s). Events are deduplicated by `event_id`.
+- **Dynamic DAG Visualization** — SVG graph built dynamically from `parent_span_id` relationships in trace events. Not hard-coded to any specific agent flow. Works for any trace topology.
+- **Node Status Indicators** — Each DAG node shows status with both icon and text: `✓ ALLOW`, `✗ BLOCK · NOT EXECUTED`, `⏸ ASK · PENDING`, `⚠ FAILED`. Accessible (not color-only).
+- **Drill-Down Drawer** — Click any DAG node to see: tool name, arguments, policy ID/version, decision, reason, execution state, correlated runtime logs (from `/logs`), and evidence records with hash chain.
+- **Block Consistency** — BLOCK decisions clearly show `NOT EXECUTED` state with red warning banner and policy reason.
+- **Evidence Verification** — Displays `Evidence chain: VERIFIED` or `Evidence chain: FAILED` from `/evidence/{trace_id}/verify`.
+- **Overview Metrics** — Cards showing actions observed, traces, blocked actions, pending approvals, allowed actions, PII redactions — all from real `/api/v1/stats` data.
+
+### New REST & WebSocket Endpoints Used
+
+| Endpoint | Purpose |
+| :--- | :--- |
+| `GET /traces` | Aggregated trace list |
+| `GET /traces/{id}` | Trace summary with decision counts |
+| `GET /traces/{id}/events` | Canonical events for DAG (preserves `span_id`, `parent_span_id`) |
+| `GET /events/{id}` | Single event detail |
+| `GET /policies` | Policy rules and capability boundaries |
+| `GET /approvals` | Approval requests |
+| `GET /evidence/{id}` | Evidence records for a trace |
+| `GET /evidence/{id}/verify` | Hash chain integrity check |
+| `GET /logs` | Correlated runtime logs (filterable by `trace_id`, `event_id`) |
+| `WS /ws/events` | Live event stream |
+
+### New Files
+
+| File | Description |
+| :--- | :--- |
+| `tests/test_week2_dashboard.py` | 12 integration tests for dashboard, WebSocket, DAG, drill-down, block consistency |
+| `HANDOFF_PERSON2.md` | Complete Person 2 → Person 3 handoff document |
+
+### Test Suite
+
+Total tests: **49** (including 12 new Person 2 dashboard integration tests).
+
+```powershell
+python -m pytest tests/ -v
+```
+
+### Person 3 Integration Points
+
+- `#policies` route renders loaded rules (read-only). Person 3 should add policy editing, toggling, and version management.
+- `#approvals` route renders approval state (read-only). Person 3 should add approve/reject buttons using `POST /approvals/{id}/approve` and `POST /approvals/{id}/reject`.
+- See `HANDOFF_PERSON2.md` for full integration details.
+
