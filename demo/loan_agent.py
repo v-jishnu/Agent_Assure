@@ -17,6 +17,7 @@ blocked tool's counter does not move, the function body genuinely never ran.
 
 import os
 import sys
+import uuid
 
 # Add root directory to sys.path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
@@ -227,9 +228,19 @@ SCENARIOS = [
 
 
 def main():
+    # --keep appends to the existing evidence store instead of starting a
+    # fresh one, so repeated runs accumulate the way they would in a real
+    # deployment and the hash chain simply continues. Useful for building up
+    # a fuller store to demonstrate against; fabricating records instead
+    # would break verify_integrity(), which is rather the point.
+    keep = "--keep" in sys.argv
     db_file = "demo_evidence.db"
-    if os.path.exists(db_file):
+    if os.path.exists(db_file) and not keep:
         os.remove(db_file)
+
+    # Sessions are tagged per invocation when accumulating, so repeated runs
+    # read as distinct activity rather than colliding on the same names.
+    run_tag = f"_{uuid.uuid4().hex[:4]}" if keep else ""
 
     policy_file = os.path.join(os.path.dirname(__file__), "..", "policies", "loan.yaml")
 
@@ -274,7 +285,7 @@ def main():
         print(f"  Expected: {scenario['expect']}")
         print(f"  Task    : {scenario['task'][:120]}...")
 
-        assure.set_session(scenario["session"])
+        assure.set_session(scenario["session"] + run_tag)
         before = dict(TOOL_EXECUTION_COUNTERS)
 
         with TraceContext() as trace:

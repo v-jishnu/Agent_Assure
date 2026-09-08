@@ -11,6 +11,13 @@ requires-python = ">=3.9"
 dependencies = [
     "pydantic>=2.0.0",
     "pyyaml>=6.0",
+    # server/ imports these; [tool.setuptools.packages.find] ships the server
+    # package, so they are runtime dependencies of the distribution. Note that
+    # requirements.txt does not cover this: uv and other modern installers
+    # resolve from pyproject.toml in preference to it, so an omission here
+    # produces a package whose server module cannot be imported.
+    "fastapi>=0.100.0",
+    "uvicorn>=0.22.0",
 ]
 
 [tool.setuptools.packages.find]
