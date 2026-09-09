@@ -283,15 +283,103 @@ The governance console (`server/static/index.html`) has been upgraded from a bas
 
 ### Test Suite
 
-Total tests: **49** (including 12 new Person 2 dashboard integration tests).
-
 ```powershell
-python -m pytest tests/ -v
+python -m pytest tests/ -q
 ```
 
-### Person 3 Integration Points
+---
 
-- `#policies` route renders loaded rules (read-only). Person 3 should add policy editing, toggling, and version management.
-- `#approvals` route renders approval state (read-only). Person 3 should add approve/reject buttons using `POST /approvals/{id}/approve` and `POST /approvals/{id}/reject`.
-- See `HANDOFF_PERSON2.md` for full integration details.
+## Week 2 — Governance Controls & Integration (Person 3)
+
+Person 3 owns the remaining governance controls and acts as the final
+integration checkpoint. The full specification is in
+[`docs/WEEK2_PERSON3.md`](docs/WEEK2_PERSON3.md).
+
+**Total tests: 57** across 9 files, covering Week 1 runtime, Person 1
+backend, Person 2 dashboard and Person 3 controls.
+
+### Policy Studio
+
+Policies are managed through the running control plane rather than by editing
+YAML by hand. The console exposes create, edit, validate, enable/disable and
+hot-reload against the runtime's own policy model — there is no second policy
+language.
+
+| Endpoint | Purpose |
+|---|---|
+| `GET /policies` | list loaded rules with scope, condition, action, mode, version |
+| `POST /policies` | create a rule |
+| `PUT /policies/{id}` | edit a rule (bumps version) |
+| `POST /policies/validate` | validate before saving; invalid definitions never become active |
+| `POST /policies/{id}/toggle` | enable / disable |
+| `POST /policies/reload` | hot-reload into the running engine |
+| `PUT /policies/capabilities` | edit allowed / approval_required / forbidden |
+
+**The governance demo this enables:** change `FIN-001` from `BLOCK` to `ASK`,
+re-run the same ₹800,000 request, and the outcome changes from refusal to a
+pending human approval — *with no change to the agent's code*. That is what
+"externalised governance" means in practice.
+
+```powershell
+python demo/demo_policy_change.py
+```
+
+### Approval Queue
+
+`ASK` decisions become real approval records rather than just an exception.
+
+| Endpoint | Purpose |
+|---|---|
+| `GET /approvals` | queue with agent, trace, tool, arguments, policy, reason, status |
+| `POST /approvals/{id}/approve` | resolve as approved |
+| `POST /approvals/{id}/reject` | resolve as rejected |
+
+Resolution re-enters the runtime: the next attempt at that action consults
+`ApprovalStore.is_action_approved()` / `is_action_rejected()`, so a human
+decision genuinely governs execution. **The UI never executes a tool
+directly** — it only records a decision the runtime then honours.
+
+### Execution DAG
+
+Each trace renders as a directed graph built from `parent_span_id`
+relationships, so the agent's execution is visible as structure rather than a
+flat log. Nodes are colour-coded by decision, and a blocked node is labelled
+`BLOCK · NOT EXECUTED` — the visual counterpart of the pre-execution
+interception guarantee. Clicking a node opens the event, policy, reason,
+control citation, logs and evidence for that span.
+
+### One Event, One Truth
+
+The integration invariant: every layer must tell the same story about the
+same event. For a blocked `approve_loan`:
+
+```text
+DAG        approve_loan = BLOCKED
+Event      decision = BLOCK
+Policy     FIN-001 v1
+Control    ISO/IEC 42001 A.9.4 | EU AI Act Art. 14
+Log        "Underlying tool execution skipped"
+Execution  no tool_result event exists
+Evidence   verified, records_checked = 2
+```
+
+If one layer said ALLOW and another said BLOCK, the system would not be
+complete. `GET /evidence/{trace_id}/verify` recomputes that trace's hash
+chain on demand; `GET /api/v1/evidence/verify` does it for the whole store.
+
+### Known Limitations
+
+- **The model call itself is not governed.** The SDK instruments tool calls
+  (`tool_call`, `tool_result`) but does not yet emit `llm_call` /
+  `llm_response`, so the policy engine never sees model output. A `wrap_llm`
+  boundary is the next piece; the detectors and redaction pipeline it would
+  need already exist.
+- **Two API path conventions coexist** — `/api/v1/*` alongside bare
+  `/traces`, `/approvals`, `/evidence/*`. Both work; they should be unified.
+- **The two verify endpoints disagree on field names** (`valid` per trace vs
+  `is_valid` globally).
+- **Span topology is one level deep.** Every tool span shares the trace root
+  as its parent, so the DAG is a fan rather than a nested tree. Correct for
+  the current single-step agent loop, but it will need real nesting when
+  tools call other tools.
 

@@ -293,6 +293,14 @@ function isBlocked(span){ return span.decision==='BLOCK' || span.status==='block
    3. API CLIENT
    ═══════════════════════════════════════════════════════════════════ */
 const API = {
+  async get(path){
+    const r = await fetch(path);
+    if(!r.ok){
+      const err = await r.json().catch(() => ({detail: r.statusText}));
+      throw new Error(Array.isArray(err.detail) ? err.detail.join('; ') : (err.detail || r.statusText));
+    }
+    return r.json();
+  },
   async post(path, body){
     const r = await fetch(path, {
       method: 'POST',
