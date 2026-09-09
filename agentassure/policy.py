@@ -298,3 +298,116 @@ class PolicyEngine:
             reason="No restrictive policies triggered; action permitted",
             severity=SeverityLevel.LOW,
         )
+
+    def get_rule(self, policy_id: str) -> Optional[PolicyRule]:
+        for r in self.rules:
+            if r.id == policy_id:
+                return r
+        return None
+
+    def add_or_update_rule(self, rule: PolicyRule) -> PolicyRule:
+        """Adds a new rule or updates an existing rule by ID, automatically handling versioning."""
+        for idx, existing in enumerate(self.rules):
+            if existing.id == rule.id:
+                # If version wasn't explicitly bumped higher than current, bump it by 1
+                if rule.version <= existing.version:
+                    rule.version = existing.version + 1
+                self.rules[idx] = rule
+                return rule
+        self.rules.append(rule)
+        return rule
+
+    def toggle_rule(self, policy_id: str, enabled: bool) -> Optional[PolicyRule]:
+        """Toggles a policy rule between ENFORCE and DISABLED."""
+        rule = self.get_rule(policy_id)
+        if not rule:
+            return None
+        rule.mode = PolicyMode.ENFORCE if enabled else PolicyMode.DISABLED
+        return rule
+
+    def save_to_yaml(self, filepath: str) -> None:
+        """Saves current policy rules and capabilities back to a YAML file."""
+        data = {
+            "policies": [r.model_dump(mode="json", exclude_none=True) for r in self.rules],
+            "capabilities": self.capabilities.model_dump(mode="json", exclude_none=True),
+        }
+        with open(filepath, "w", encoding="utf-8") as f:
+            yaml.safe_dump(data, f, sort_keys=False, default_flow_style=False)
+
+
+def validate_policy_rule(data: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Validates a candidate policy rule definition.
+    Catches missing required fields, invalid actions/modes, malformed conditions, and invalid threshold types.
+    """
+    errors: List[str] = []
+
+    if not isinstance(data, dict):
+        return {"valid": False, "errors": ["Policy definition must be a JSON object"]}
+
+    policy_id = data.get("id")
+    if not policy_id or not isinstance(policy_id, str) or not policy_id.strip():
+        errors.append("Field 'id' is required and must be a non-empty string")
+
+    name = data.get("name")
+    if not name or not isinstance(name, str) or not name.strip():
+        errors.append("Field 'name' is required and must be a non-empty string")
+
+    action = data.get("action")
+    valid_actions = {"ALLOW", "BLOCK", "ASK", "SHADOW"}
+    if action:
+        if not isinstance(action, str) or action.upper() not in valid_actions:
+            errors.append(f"Invalid action '{action}'. Must be one of: {', '.join(sorted(valid_actions))}")
+
+    mode = data.get("mode")
+    valid_modes = {"enforce", "audit", "disabled"}
+    if mode:
+        if not isinstance(mode, str) or mode.lower() not in valid_modes:
+            errors.append(f"Invalid mode '{mode}'. Must be one of: {', '.join(sorted(valid_modes))}")
+
+    severity = data.get("severity")
+    valid_severities = {"low", "medium", "high", "critical"}
+    if severity:
+        if not isinstance(severity, str) or severity.lower() not in valid_severities:
+            errors.append(f"Invalid severity '{severity}'. Must be one of: {', '.join(sorted(valid_severities))}")
+
+    condition = data.get("condition")
+    if condition is not None:
+        if not isinstance(condition, dict):
+            errors.append("Field 'condition' must be an object containing field, operator, and value")
+        else:
+            cond_field = condition.get("field")
+            if not cond_field or not isinstance(cond_field, str) or not cond_field.strip():
+                errors.append("Condition field 'field' is required and must be a non-empty string")
+
+            cond_op = condition.get("operator")
+            valid_ops = {"eq", "ne", "gt", "gte", "lt", "lte", "in", "contains"}
+            if not cond_op or not isinstance(cond_op, str) or cond_op.lower() not in valid_ops:
+                errors.append(f"Invalid condition operator '{cond_op}'. Must be one of: {', '.join(sorted(valid_ops))}")
+            else:
+                op_lower = cond_op.lower()
+                cond_val = condition.get("value")
+                if cond_val is None:
+                    errors.append("Condition field 'value' is required")
+                elif op_lower in ("gt", "gte", "lt", "lte"):
+                    try:
+                        float(cond_val)
+                    except (ValueError, TypeError):
+                        errors.append(f"Condition value '{cond_val}' is not a valid number for operator '{cond_op}'")
+                elif op_lower == "in":
+                    if not isinstance(cond_val, (list, tuple)):
+                        errors.append(f"Condition value for 'in' operator must be a list of values")
+
+    # Final pydantic validation check
+    try:
+        PolicyRule.model_validate(data)
+    except Exception as e:
+        err_msg = str(e)
+        if err_msg not in errors:
+            errors.append(f"Pydantic validation error: {err_msg}")
+
+    return {
+        "valid": len(errors) == 0,
+        "errors": errors,
+    }
+

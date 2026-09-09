@@ -17,7 +17,7 @@ from agentassure.approval import ApprovalRequest, ApprovalStatus, ApprovalStore
 from agentassure.events import AgentEvent, EventStatus, EventType
 from agentassure.evidence import EvidenceRecord, EvidenceStore
 from agentassure.logging import LogEntry, default_log_buffer, log_runtime
-from agentassure.policy import PolicyEngine
+from agentassure.policy import PolicyEngine, PolicyRule, CapabilitiesPolicy, validate_policy_rule
 from agentassure.publisher import default_event_publisher
 from server.websocket import ws_manager
 
@@ -276,6 +276,102 @@ def get_policy(policy_id: str):
         }
 
     raise HTTPException(status_code=404, detail=f"Policy not found: {policy_id}")
+
+
+
+@app.post("/policies/validate")
+def validate_policy(body: Dict[str, Any]):
+    """Validates a candidate policy definition against governance schema rules."""
+    return validate_policy_rule(body)
+
+
+@app.post("/policies/reload")
+def reload_policies():
+    """Reloads policy definitions from disk into memory without requiring server restart."""
+    global policy_engine
+    if os.path.exists(POLICY_PATH):
+        try:
+            policy_engine = PolicyEngine.load_from_yaml(POLICY_PATH)
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=f"Failed to reload policy file: {e}")
+    return {
+        "status": "reloaded",
+        "total_rules": len(policy_engine.rules),
+        "filepath": POLICY_PATH,
+    }
+
+
+@app.post("/policies")
+def create_policy(body: Dict[str, Any]):
+    """Creates a new policy rule, validates it, updates in-memory engine, and persists to YAML."""
+    val_res = validate_policy_rule(body)
+    if not val_res["valid"]:
+        raise HTTPException(status_code=400, detail=val_res["errors"])
+
+    # Check for existing ID
+    policy_id = body["id"]
+    if policy_engine.get_rule(policy_id):
+        raise HTTPException(status_code=400, detail=f"Policy with ID '{policy_id}' already exists. Use PUT /policies/{policy_id} to update.")
+
+    try:
+        rule = PolicyRule.model_validate(body)
+        updated = policy_engine.add_or_update_rule(rule)
+        policy_engine.save_to_yaml(POLICY_PATH)
+        return updated.model_dump()
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Failed to create policy: {e}")
+
+
+@app.put("/policies/{policy_id}")
+def update_policy(policy_id: str, body: Dict[str, Any]):
+    """
+    Updates an existing policy rule or creates it if it doesn't exist.
+    Automatically increments version if version is not explicitly bumped higher.
+    """
+    body["id"] = policy_id
+    val_res = validate_policy_rule(body)
+    if not val_res["valid"]:
+        raise HTTPException(status_code=400, detail=val_res["errors"])
+
+    try:
+        rule = PolicyRule.model_validate(body)
+        updated = policy_engine.add_or_update_rule(rule)
+        policy_engine.save_to_yaml(POLICY_PATH)
+        return updated.model_dump()
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Failed to update policy: {e}")
+
+
+@app.post("/policies/{policy_id}/toggle")
+def toggle_policy(policy_id: str, body: Optional[Dict[str, Any]] = None):
+    """Toggles a policy rule between ENFORCE and DISABLED modes."""
+    rule = policy_engine.get_rule(policy_id)
+    if not rule:
+        raise HTTPException(status_code=404, detail=f"Policy not found: {policy_id}")
+
+    enabled = True
+    if body and "enabled" in body:
+        enabled = bool(body["enabled"])
+    else:
+        # Toggle current state if enabled not specified
+        enabled = (rule.mode != PolicyMode.ENFORCE) if hasattr(rule, "mode") else True
+
+    updated = policy_engine.toggle_rule(policy_id, enabled)
+    policy_engine.save_to_yaml(POLICY_PATH)
+    return updated.model_dump() if updated else {}
+
+
+@app.put("/policies/capabilities")
+def update_capabilities(body: Dict[str, Any]):
+    """Updates capability boundaries (allowed, approval_required, forbidden tools)."""
+    try:
+        caps = CapabilitiesPolicy.model_validate(body)
+        policy_engine.capabilities = caps
+        policy_engine.save_to_yaml(POLICY_PATH)
+        return caps.model_dump()
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Failed to update capabilities: {e}")
+
 
 
 # -------------------------------------------------------------------------

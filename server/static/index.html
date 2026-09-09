@@ -164,6 +164,48 @@ code.io{display:block;color:#a8c3e0;font-family:Consolas,monospace;font-size:11p
 .cols{display:grid;grid-template-columns:1fr 1fr;gap:14px}
 @media(max-width:1100px){.cols{grid-template-columns:1fr}}
 .flex-between{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px}
+
+/* ═══════════════════════════════════════════════════════════════════
+   12. POLICY STUDIO & APPROVAL QUEUE STYLES (Person 3)
+   ═══════════════════════════════════════════════════════════════════ */
+.pol-card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:18px;margin-bottom:16px;transition:border-color .15s}
+.pol-card:hover{border-color:var(--accent)}
+.pol-header{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:8px}
+.pol-id{font-size:15px;font-weight:700;font-family:Consolas,monospace;color:var(--accent)}
+.pol-title{font-size:14px;font-weight:600;margin-top:2px}
+.pol-desc{color:var(--muted);font-size:12.5px;margin-bottom:12px}
+.pol-meta{display:flex;gap:10px;flex-wrap:wrap;font-size:11.5px;margin-bottom:12px}
+.pol-meta-item{background:var(--panel-2);border:1px solid var(--line);padding:3px 9px;border-radius:5px}
+.pol-meta-item b{color:var(--muted);margin-right:4px}
+.pol-actions{display:flex;gap:8px;align-items:center;margin-top:12px;padding-top:12px;border-top:1px solid rgba(36,53,79,.5);flex-wrap:wrap}
+
+.btn{background:var(--panel-2);border:1px solid var(--line);color:var(--text);padding:6px 14px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px;transition:all .15s}
+.btn:hover{background:var(--line);border-color:var(--muted)}
+.btn-sm{padding:4px 10px;font-size:11px}
+.btn-primary{background:var(--accent);color:#062744;border-color:var(--accent)}
+.btn-primary:hover{opacity:.9}
+.btn-success{background:var(--allow);color:#062744;border-color:var(--allow)}
+.btn-danger{background:var(--block);color:#fff;border-color:var(--block)}
+.btn-warning{background:var(--ask);color:#062744;border-color:var(--ask)}
+
+.modal-overlay{position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(11,18,32,.75);z-index:200;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .2s}
+.modal-overlay.open{opacity:1;pointer-events:auto}
+.modal{background:var(--panel);border:1px solid var(--line);border-radius:12px;width:90%;max-width:640px;max-height:85vh;overflow-y:auto;padding:24px;box-shadow:0 10px 30px rgba(0,0,0,.5)}
+.modal-title{font-size:18px;font-weight:700;margin-bottom:6px}
+.modal-sub{font-size:12px;color:var(--muted);margin-bottom:18px}
+.form-group{margin-bottom:14px}
+.form-group label{display:block;font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px}
+.form-control{width:100%;background:#0a1424;border:1px solid var(--line);color:var(--text);padding:8px 12px;border-radius:6px;font-family:inherit;font-size:12.5px}
+.form-control:focus{outline:none;border-color:var(--accent)}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.val-alert{background:rgba(255,95,109,.12);border:1px solid rgba(255,95,109,.4);color:var(--block);padding:10px 14px;border-radius:6px;font-size:12px;margin-bottom:14px}
+.val-ok{background:rgba(62,213,152,.12);border:1px solid rgba(62,213,152,.4);color:var(--allow);padding:10px 14px;border-radius:6px;font-size:12px;margin-bottom:14px}
+
+.appr-card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px;margin-bottom:14px}
+.appr-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px}
+.appr-title{font-size:15px;font-weight:700;color:var(--text)}
+.appr-actions{display:flex;gap:10px;align-items:center;margin-top:14px;padding-top:14px;border-top:1px solid rgba(36,53,79,.5);flex-wrap:wrap}
+.appr-input{background:#0a1424;border:1px solid var(--line);color:var(--text);padding:6px 10px;border-radius:6px;font-size:12px;min-width:140px}
 </style>
 </head>
 <body>
@@ -181,8 +223,8 @@ code.io{display:block;color:#a8c3e0;font-family:Consolas,monospace;font-size:11p
       <li><a href="#monitor" data-route="monitor"><span class="icon">⚡</span> Live Monitor</a></li>
       <li><a href="#traces" data-route="traces"><span class="icon">☰</span> Traces</a></li>
       <li><div class="sb-sep"></div></li>
-      <li><a href="#policies" data-route="policies" class="p3"><span class="icon">⚙</span> Policies</a></li>
-      <li><a href="#approvals" data-route="approvals" class="p3"><span class="icon">☐</span> Approvals</a></li>
+      <li><a href="#policies" data-route="policies"><span class="icon">⚙</span> Policies</a></li>
+      <li><a href="#approvals" data-route="approvals"><span class="icon">☐</span> Approvals</a></li>
       <li><div class="sb-sep"></div></li>
       <li><a href="#evidence" data-route="evidence"><span class="icon">⛓</span> Evidence</a></li>
     </ul>
@@ -251,9 +293,28 @@ function isBlocked(span){ return span.decision==='BLOCK' || span.status==='block
    3. API CLIENT
    ═══════════════════════════════════════════════════════════════════ */
 const API = {
-  async get(path){
-    const r = await fetch(path);
-    if(!r.ok) throw new Error(`${path} → ${r.status}`);
+  async post(path, body){
+    const r = await fetch(path, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(body || {})
+    });
+    if(!r.ok){
+      const err = await r.json().catch(() => ({detail: r.statusText}));
+      throw new Error(Array.isArray(err.detail) ? err.detail.join('; ') : (err.detail || r.statusText));
+    }
+    return r.json();
+  },
+  async put(path, body){
+    const r = await fetch(path, {
+      method: 'PUT',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(body || {})
+    });
+    if(!r.ok){
+      const err = await r.json().catch(() => ({detail: r.statusText}));
+      throw new Error(Array.isArray(err.detail) ? err.detail.join('; ') : (err.detail || r.statusText));
+    }
     return r.json();
   },
   stats()       { return this.get('/api/v1/stats'); },
@@ -262,7 +323,15 @@ const API = {
   traceEvents(id){ return this.get('/traces/'+encodeURIComponent(id)+'/events'); },
   event(id)     { return this.get('/events/'+encodeURIComponent(id)); },
   policies()    { return this.get('/policies'); },
+  validatePolicy(body){ return this.post('/policies/validate', body); },
+  createPolicy(body){ return this.post('/policies', body); },
+  updatePolicy(id, body){ return this.put('/policies/'+encodeURIComponent(id), body); },
+  togglePolicy(id, enabled){ return this.post('/policies/'+encodeURIComponent(id)+'/toggle', {enabled}); },
+  reloadPolicies(){ return this.post('/policies/reload'); },
+  updateCapabilities(body){ return this.put('/policies/capabilities', body); },
   approvals(p)  { const q=new URLSearchParams(p||{}).toString(); return this.get('/approvals'+(q?'?'+q:'')); },
+  approve(id, body){ return this.post('/approvals/'+encodeURIComponent(id)+'/approve', body); },
+  reject(id, body){ return this.post('/approvals/'+encodeURIComponent(id)+'/reject', body); },
   evidence(tid) { return this.get('/evidence/'+encodeURIComponent(tid)); },
   verify(tid)   { return this.get('/evidence/'+encodeURIComponent(tid)+'/verify'); },
   logs(p)       { const q=new URLSearchParams(p||{}).toString(); return this.get('/logs'+(q?'?'+q:'')); },
@@ -332,6 +401,9 @@ const WS = {
     }
     // Auto-update views if relevant
     if(S.route==='monitor') Views.monitor();
+    if(S.route==='approvals' || data.event_type==='approval_requested' || data.event_type==='approval_resolved'){
+      if(S.route==='approvals') Views.approvals();
+    }
     if(S.route==='trace-detail' && S.routeParam && data.trace_id === S.routeParam){
       // Merge into selected trace events
       if(eid && !S.selectedTraceEvents.find(e=>e.event_id===eid)){
@@ -847,62 +919,501 @@ const Views = {
     }).join('')}</tbody></table>`;
   },
 
-  /* ─────── POLICIES (Person 3 placeholder) ─────── */
+  /* ─────── POLICIES ─────── */
   async policies(){
     const main = $('main');
-    main.innerHTML = '<div class="page-title">Policies</div><div class="page-sub">Governance policy rules and capability boundaries.</div><div class="placeholder-banner"><div class="icon">⚙</div><h3>Policy Management — Person 3 Scope</h3><p>Policy editing, toggling, and version management will be implemented by Person 3. Current loaded policies are shown below (read-only).</p></div><div id="pol-body"></div>';
+    main.innerHTML = `
+      <div class="flex-between" style="margin-bottom:14px">
+        <div>
+          <div class="page-title">Policy Studio</div>
+          <div class="page-sub">Declarative governance rules, condition thresholds, scope boundaries, and hot-reloading.</div>
+        </div>
+        <div style="display:flex;gap:10px">
+          <button class="btn btn-primary" onclick="Views.openPolicyModal()">+ New Policy Rule</button>
+          <button class="btn" onclick="Views.reloadPolicies()">🔄 Hot Reload</button>
+        </div>
+      </div>
+      <div id="pol-notice"></div>
+      <div id="pol-body">Loading policies…</div>
+      <div id="pol-modal-container"></div>`;
 
     try{
       const data = await API.policies();
-      const el = $('pol-body');
-      el.innerHTML = `<div class="panel"><h2>Loaded Rules (${data.total_rules})</h2><p class="sub">Read-only view of current policy configuration.</p>
-        <table><thead><tr><th>ID</th><th>Name</th><th>Action</th><th>Severity</th><th>Mode</th><th>Controls</th></tr></thead><tbody>
-        ${data.rules.map(r=>`<tr>
-          <td class="mono">${esc(r.id)}</td>
-          <td>${esc(r.name)}</td>
-          <td><span class="chip ${chipClass(r.action)}">${esc(r.action)}</span></td>
-          <td>${esc(r.severity)}</td>
-          <td>${esc(r.mode)}</td>
-          <td>${r.controls?`<span class="cite">${esc((r.controls.iso42001?'ISO 42001 '+r.controls.iso42001:'')+(r.controls.eu_ai_act?' | EU AI Act '+r.controls.eu_ai_act:''))}</span>`:'—'}</td>
-        </tr>`).join('')}
-        </tbody></table></div>
-        <div class="panel"><h2>Capability Boundaries</h2><p class="sub">Tool-level access control.</p>
-          <div style="display:flex;gap:14px;flex-wrap:wrap">
-            <div><b style="color:var(--allow)">Allowed:</b> ${(data.capabilities.allowed||[]).map(t=>`<span class="chip ALLOW">${esc(t)}</span>`).join(' ')}</div>
-            <div><b style="color:var(--ask)">Approval Required:</b> ${(data.capabilities.approval_required||[]).map(t=>`<span class="chip ASK">${esc(t)}</span>`).join(' ')}</div>
-            <div><b style="color:var(--block)">Forbidden:</b> ${(data.capabilities.forbidden||[]).map(t=>`<span class="chip BLOCK">${esc(t)}</span>`).join(' ')}</div>
-          </div>
-        </div>`;
+      S._policyData = data;
+      this._renderPolicies(data);
     }catch(e){
       $('pol-body').innerHTML = `<div class="empty">Failed to load policies: ${esc(e.message)}</div>`;
     }
   },
 
-  /* ─────── APPROVALS (Person 3 placeholder) ─────── */
-  async approvals(){
-    const main = $('main');
-    main.innerHTML = '<div class="page-title">Approvals</div><div class="page-sub">Human-in-the-loop approval management.</div><div class="placeholder-banner"><div class="icon">☐</div><h3>Approval Management — Person 3 Scope</h3><p>Approve/reject workflows, approval history, and operator controls will be implemented by Person 3. Current approval state is shown below (read-only).</p></div><div id="appr-body"></div>';
+  _renderPolicies(data){
+    const el = $('pol-body');
+    if(!el) return;
+
+    let html = `<div style="margin-bottom:20px">
+      <h2 style="font-size:14px;margin-bottom:12px">Active Governance Rules (${data.total_rules})</h2>`;
+
+    if(!data.rules || !data.rules.length){
+      html += '<div class="empty">No policy rules defined. Click "+ New Policy Rule" to create one.</div>';
+    } else {
+      html += data.rules.map(r => {
+        const isEnforced = r.mode === 'enforce';
+        const nextAction = r.action === 'BLOCK' ? 'ASK' : 'BLOCK';
+        const scope = r.scope || {};
+        const toolsStr = Array.isArray(scope.tools) ? scope.tools.join(', ') : (scope.tools || 'All tools');
+        const condStr = r.condition ? `${r.condition.field} ${r.condition.operator} ${r.condition.value}` : 'No condition';
+        const citeStr = r.controls ? ((r.controls.iso42001 ? 'ISO 42001 ' + r.controls.iso42001 : '') + (r.controls.eu_ai_act ? ' | EU AI Act ' + r.controls.eu_ai_act : '')) : null;
+
+        return `<div class="pol-card">
+          <div class="pol-header">
+            <div>
+              <span class="pol-id">${esc(r.id)}</span>
+              <span class="pill" style="font-size:10px;padding:2px 8px;margin-left:6px;background:var(--panel-2);color:var(--muted)">v${r.version||1}</span>
+              <div class="pol-title">${esc(r.name)}</div>
+            </div>
+            <div style="display:flex;gap:8px;align-items:center">
+              <span class="chip ${chipClass(r.action)}">${esc(r.action)}</span>
+              <span class="chip ${isEnforced?'ALLOW':'SHADOW'}">${esc(r.mode||'enforce')}</span>
+            </div>
+          </div>
+          <div class="pol-desc">${esc(r.description||'—')}</div>
+          
+          <div class="pol-meta">
+            <div class="pol-meta-item"><b>Agent:</b> ${esc(scope.agent||'*')}</div>
+            <div class="pol-meta-item"><b>Env:</b> ${esc(scope.environment||'*')}</div>
+            <div class="pol-meta-item"><b>Tools:</b> ${esc(toolsStr)}</div>
+            <div class="pol-meta-item"><b>Severity:</b> ${esc(r.severity||'medium')}</div>
+          </div>
+
+          <div style="display:flex;gap:12px;flex-wrap:wrap;font-size:12px;margin-bottom:12px">
+            <div style="flex:1;min-width:240px;background:#0a1424;border:1px solid var(--line);border-radius:6px;padding:8px 12px">
+              <span style="color:var(--muted);font-size:10.5px;text-transform:uppercase;letter-spacing:.5px;display:block">Condition</span>
+              <code style="color:var(--accent);font-family:Consolas,monospace">${esc(condStr)}</code>
+            </div>
+            ${citeStr ? `<div style="flex:1;min-width:240px;background:#0a1424;border:1px solid var(--line);border-radius:6px;padding:8px 12px">
+              <span style="color:var(--muted);font-size:10.5px;text-transform:uppercase;letter-spacing:.5px;display:block">Compliance Citation</span>
+              <span class="cite">${esc(citeStr)}</span>
+            </div>` : ''}
+          </div>
+
+          <div class="pol-actions">
+            <button class="btn btn-sm btn-warning" onclick="Views.togglePolicyAction('${esc(r.id)}', '${nextAction}')">
+              ⚡ Action: ${esc(r.action)} → ${nextAction}
+            </button>
+            <button class="btn btn-sm ${isEnforced?'btn-danger':''}" onclick="Views.togglePolicyMode('${esc(r.id)}', ${!isEnforced})">
+              ${isEnforced?'⏸ Disable':'▶ Enable'} Mode
+            </button>
+            <button class="btn btn-sm" onclick="Views.openPolicyModal('${esc(r.id)}')">✏ Edit Details & Thresholds</button>
+          </div>
+        </div>`;
+      }).join('');
+    }
+    html += `</div>`;
+
+    // Capabilities section
+    const caps = data.capabilities || {};
+    html += `
+      <div class="panel">
+        <div class="flex-between" style="margin-bottom:10px">
+          <div>
+            <h2>Capability Boundaries</h2>
+            <p class="sub">Tool-level access control permissions (Allowed, Approval Required, Forbidden).</p>
+          </div>
+          <button class="btn btn-sm" onclick="Views.openCapabilitiesModal()">✏ Edit Capabilities</button>
+        </div>
+        <div style="display:flex;gap:16px;flex-wrap:wrap">
+          <div><b style="color:var(--allow);font-size:12px">Allowed:</b> ${(caps.allowed||[]).map(t=>`<span class="chip ALLOW">${esc(t)}</span>`).join(' ')}</div>
+          <div><b style="color:var(--ask);font-size:12px">Approval Required:</b> ${(caps.approval_required||[]).map(t=>`<span class="chip ASK">${esc(t)}</span>`).join(' ')}</div>
+          <div><b style="color:var(--block);font-size:12px">Forbidden:</b> ${(caps.forbidden||[]).map(t=>`<span class="chip BLOCK">${esc(t)}</span>`).join(' ')}</div>
+        </div>
+      </div>`;
+
+    el.innerHTML = html;
+  },
+
+  async togglePolicyAction(policyId, newAction){
+    try{
+      const rule = S._policyData.rules.find(r => r.id === policyId);
+      if(!rule) return;
+      const updatedRule = JSON.parse(JSON.stringify(rule));
+      updatedRule.action = newAction;
+      const res = await API.updatePolicy(policyId, updatedRule);
+      this.showNotice(`Policy ${policyId} updated: action changed to ${newAction} (v${res.version})`, 'ok');
+      this.policies();
+    }catch(e){
+      this.showNotice(`Failed to update policy action: ${e.message}`, 'bad');
+    }
+  },
+
+  async togglePolicyMode(policyId, enable){
+    try{
+      const res = await API.togglePolicy(policyId, enable);
+      this.showNotice(`Policy ${policyId} is now ${enable?'ENFORCE':'DISABLED'}`, 'ok');
+      this.policies();
+    }catch(e){
+      this.showNotice(`Failed to toggle policy mode: ${e.message}`, 'bad');
+    }
+  },
+
+  async reloadPolicies(){
+    try{
+      const res = await API.reloadPolicies();
+      this.showNotice(`Policies reloaded successfully from ${res.filepath} (${res.total_rules} rules)`, 'ok');
+      this.policies();
+    }catch(e){
+      this.showNotice(`Failed to reload policies: ${e.message}`, 'bad');
+    }
+  },
+
+  showNotice(msg, type='ok'){
+    const el = $('pol-notice');
+    if(!el) return;
+    el.innerHTML = `<div class="${type==='ok'?'val-ok':'val-alert'}">${esc(msg)}</div>`;
+    setTimeout(()=> { if(el) el.innerHTML=''; }, 4000);
+  },
+
+  openPolicyModal(policyId){
+    const isEdit = !!policyId;
+    const rule = isEdit ? (S._policyData.rules.find(r => r.id === policyId) || {}) : {};
+    const scope = rule.scope || {};
+    const cond = rule.condition || {};
+    const ctrl = rule.controls || {};
+
+    const container = $('pol-modal-container');
+    container.innerHTML = `
+      <div class="modal-overlay open" id="pol-modal-overlay">
+        <div class="modal">
+          <div class="flex-between">
+            <div class="modal-title">${isEdit ? 'Edit Policy Rule: ' + esc(policyId) : 'Create New Policy Rule'}</div>
+            <button class="dr-close" onclick="Views.closePolicyModal()">&times;</button>
+          </div>
+          <div class="modal-sub">Define declarative rule properties, condition thresholds, and compliance citations.</div>
+          <div id="modal-val-err"></div>
+          <form id="policy-form" onsubmit="Views.savePolicyForm(event, ${isEdit})">
+            <div class="form-row">
+              <div class="form-group">
+                <label>Policy ID *</label>
+                <input type="text" id="mf-id" class="form-control" value="${esc(rule.id||'')}" ${isEdit?'readonly':''} required placeholder="e.g. FIN-004">
+              </div>
+              <div class="form-group">
+                <label>Policy Name *</label>
+                <input type="text" id="mf-name" class="form-control" value="${esc(rule.name||'')}" required placeholder="e.g. Max loan limit">
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label>Description</label>
+              <input type="text" id="mf-desc" class="form-control" value="${esc(rule.description||'')}" placeholder="Brief description of governance intent">
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label>Action *</label>
+                <select id="mf-action" class="form-control">
+                  <option value="BLOCK" ${rule.action==='BLOCK'?'selected':''}>BLOCK (Intercept execution)</option>
+                  <option value="ASK" ${rule.action==='ASK'?'selected':''}>ASK (Require human approval)</option>
+                  <option value="ALLOW" ${rule.action==='ALLOW'?'selected':''}>ALLOW (Permit execution)</option>
+                  <option value="SHADOW" ${rule.action==='SHADOW'?'selected':''}>SHADOW (Audit mode)</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Mode *</label>
+                <select id="mf-mode" class="form-control">
+                  <option value="enforce" ${rule.mode==='enforce'?'selected':''}>Enforce (Active)</option>
+                  <option value="audit" ${rule.mode==='audit'?'selected':''}>Audit (Log only)</option>
+                  <option value="disabled" ${rule.mode==='disabled'?'selected':''}>Disabled (Inactive)</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label>Agent Scope</label>
+                <input type="text" id="mf-agent" class="form-control" value="${esc(scope.agent||'loan-agent')}" placeholder="e.g. loan-agent">
+              </div>
+              <div class="form-group">
+                <label>Tools Scope (comma-separated)</label>
+                <input type="text" id="mf-tools" class="form-control" value="${esc(Array.isArray(scope.tools)?scope.tools.join(', '):(scope.tools||'approve_loan'))}" placeholder="e.g. approve_loan">
+              </div>
+            </div>
+
+            <div style="background:#0a1424;border:1px solid var(--line);border-radius:8px;padding:12px;margin-bottom:14px">
+              <div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Condition Definition</div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label>Field Name</label>
+                  <input type="text" id="mf-cond-field" class="form-control" value="${esc(cond.field||'amount')}" placeholder="e.g. amount or credit_score">
+                </div>
+                <div class="form-group">
+                  <label>Operator</label>
+                  <select id="mf-cond-op" class="form-control">
+                    <option value="gt" ${cond.operator==='gt'?'selected':''}>gt (Greater Than)</option>
+                    <option value="gte" ${cond.operator==='gte'?'selected':''}>gte (Greater or Equal)</option>
+                    <option value="lt" ${cond.operator==='lt'?'selected':''}>lt (Less Than)</option>
+                    <option value="lte" ${cond.operator==='lte'?'selected':''}>lte (Less or Equal)</option>
+                    <option value="eq" ${cond.operator==='eq'?'selected':''}>eq (Equals)</option>
+                    <option value="ne" ${cond.operator==='ne'?'selected':''}>ne (Not Equals)</option>
+                  </select>
+                </div>
+              </div>
+              <div class="form-group" style="margin-bottom:0">
+                <label>Threshold / Value</label>
+                <input type="text" id="mf-cond-val" class="form-control" value="${esc(cond.value!=null?cond.value:'500000')}" placeholder="e.g. 500000">
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label>ISO 42001 Citation</label>
+                <input type="text" id="mf-iso" class="form-control" value="${esc(ctrl.iso42001||'A.9.4')}" placeholder="e.g. A.9.4">
+              </div>
+              <div class="form-group">
+                <label>EU AI Act Citation</label>
+                <input type="text" id="mf-eu" class="form-control" value="${esc(ctrl.eu_ai_act||'Art. 14')}" placeholder="e.g. Art. 14">
+              </div>
+            </div>
+
+            <div class="flex-between" style="margin-top:18px">
+              <button type="button" class="btn" onclick="Views.closePolicyModal()">Cancel</button>
+              <button type="submit" class="btn btn-primary">${isEdit?'Save Changes':'Create Policy'}</button>
+            </div>
+          </form>
+        </div>
+      </div>`;
+  },
+
+  closePolicyModal(){
+    const container = $('pol-modal-container');
+    if(container) container.innerHTML = '';
+  },
+
+  async savePolicyForm(e, isEdit){
+    e.preventDefault();
+    const errEl = $('modal-val-err');
+    errEl.innerHTML = '';
+
+    const toolsVal = $('mf-tools').value.trim();
+    const toolsList = toolsVal ? toolsVal.split(',').map(s=>s.trim()).filter(Boolean) : null;
+    const condValRaw = $('mf-cond-val').value.trim();
+    let condValParsed = condValRaw;
+    if(!isNaN(condValRaw) && condValRaw !== '') condValParsed = Number(condValRaw);
+
+    const payload = {
+      id: $('mf-id').value.trim(),
+      name: $('mf-name').value.trim(),
+      description: $('mf-desc').value.trim(),
+      action: $('mf-action').value,
+      mode: $('mf-mode').value,
+      severity: 'medium',
+      scope: {
+        agent: $('mf-agent').value.trim() || 'loan-agent',
+        environment: 'demo',
+        tools: toolsList
+      },
+      condition: {
+        field: $('mf-cond-field').value.trim(),
+        operator: $('mf-cond-op').value,
+        value: condValParsed
+      },
+      controls: {
+        iso42001: $('mf-iso').value.trim() || null,
+        eu_ai_act: $('mf-eu').value.trim() || null
+      }
+    };
 
     try{
-      const approvals = await API.approvals();
-      const el = $('appr-body');
-      if(!approvals.length){ el.innerHTML='<div class="empty">No approvals recorded.</div>'; return; }
+      const valRes = await API.validatePolicy(payload);
+      if(!valRes.valid){
+        errEl.innerHTML = `<div class="val-alert">Validation Errors:<br>${valRes.errors.map(err=>'• '+esc(err)).join('<br>')}</div>`;
+        return;
+      }
 
-      el.innerHTML = `<div class="panel"><h2>Approval Requests</h2><p class="sub">Read-only view. Person 3 will add approve/reject controls.</p>
-        <table><thead><tr><th>ID</th><th>Tool</th><th>Trace</th><th>Policy</th><th>Status</th><th>Created</th><th>Resolved By</th></tr></thead><tbody>
-        ${approvals.map(a=>`<tr>
-          <td class="mono">${esc(truncate(a.approval_id,16))}</td>
-          <td><b>${esc(a.tool_name)}</b></td>
-          <td class="mono">${esc(truncate(a.trace_id,14))}</td>
-          <td class="mono">${esc(a.policy_id||'—')}</td>
-          <td><span class="chip ${chipClass(a.status)}">${esc(a.status)}</span></td>
-          <td class="mono">${shortTs(a.created_at)}</td>
-          <td>${esc(a.resolved_by||'—')}</td>
-        </tr>`).join('')}
-        </tbody></table></div>`;
+      if(isEdit){
+        const existing = S._policyData.rules.find(r=>r.id===payload.id);
+        payload.version = (existing ? existing.version : 1) + 1;
+        await API.updatePolicy(payload.id, payload);
+        this.showNotice(`Policy ${payload.id} updated (v${payload.version})`, 'ok');
+      } else {
+        payload.version = 1;
+        await API.createPolicy(payload);
+        this.showNotice(`Policy ${payload.id} created successfully`, 'ok');
+      }
+      this.closePolicyModal();
+      this.policies();
+    }catch(err){
+      errEl.innerHTML = `<div class="val-alert">Error: ${esc(err.message)}</div>`;
+    }
+  },
+
+  openCapabilitiesModal(){
+    const caps = (S._policyData && S._policyData.capabilities) ? S._policyData.capabilities : {};
+    const container = $('pol-modal-container');
+    container.innerHTML = `
+      <div class="modal-overlay open">
+        <div class="modal">
+          <div class="flex-between">
+            <div class="modal-title">Edit Capability Boundaries</div>
+            <button class="dr-close" onclick="Views.closePolicyModal()">&times;</button>
+          </div>
+          <div class="modal-sub">Define allowed, approval-required, and forbidden tool capabilities.</div>
+          <div id="cap-val-err"></div>
+          <form onsubmit="Views.saveCapabilitiesForm(event)">
+            <div class="form-group">
+              <label>Allowed Tools (comma-separated)</label>
+              <input type="text" id="cap-allowed" class="form-control" value="${esc((caps.allowed||[]).join(', '))}">
+            </div>
+            <div class="form-group">
+              <label>Approval Required Tools (comma-separated)</label>
+              <input type="text" id="cap-approval" class="form-control" value="${esc((caps.approval_required||[]).join(', '))}">
+            </div>
+            <div class="form-group">
+              <label>Forbidden Tools (comma-separated)</label>
+              <input type="text" id="cap-forbidden" class="form-control" value="${esc((caps.forbidden||[]).join(', '))}">
+            </div>
+            <div class="flex-between" style="margin-top:18px">
+              <button type="button" class="btn" onclick="Views.closePolicyModal()">Cancel</button>
+              <button type="submit" class="btn btn-primary">Save Capabilities</button>
+            </div>
+          </form>
+        </div>
+      </div>`;
+  },
+
+  async saveCapabilitiesForm(e){
+    e.preventDefault();
+    const parseList = id => $(id).value.split(',').map(s=>s.trim()).filter(Boolean);
+    const payload = {
+      allowed: parseList('cap-allowed'),
+      approval_required: parseList('cap-approval'),
+      forbidden: parseList('cap-forbidden'),
+    };
+    try{
+      await API.updateCapabilities(payload);
+      this.closePolicyModal();
+      this.showNotice('Capabilities updated successfully', 'ok');
+      this.policies();
+    }catch(err){
+      $('cap-val-err').innerHTML = `<div class="val-alert">Error: ${esc(err.message)}</div>`;
+    }
+  },
+
+  /* ─────── APPROVALS ─────── */
+  async approvals(){
+    const main = $('main');
+    main.innerHTML = `
+      <div class="flex-between" style="margin-bottom:14px">
+        <div>
+          <div class="page-title">Approval Queue</div>
+          <div class="page-sub">Operator control-plane for human sign-off. Governs tool execution via runtime path.</div>
+        </div>
+      </div>
+      <div class="filters" id="appr-filters">
+        <button class="${(!S._apprStatusFilter||S._apprStatusFilter==='ALL')?'on':''}" onclick="Views.filterApprovals('ALL')">All</button>
+        <button class="${S._apprStatusFilter==='PENDING'?'on':''}" onclick="Views.filterApprovals('PENDING')">Pending</button>
+        <button class="${S._apprStatusFilter==='APPROVED'?'on':''}" onclick="Views.filterApprovals('APPROVED')">Approved</button>
+        <button class="${S._apprStatusFilter==='REJECTED'?'on':''}" onclick="Views.filterApprovals('REJECTED')">Rejected</button>
+      </div>
+      <div id="appr-notice"></div>
+      <div id="appr-body">Loading approvals…</div>`;
+
+    try{
+      const filterStatus = (S._apprStatusFilter && S._apprStatusFilter !== 'ALL') ? S._apprStatusFilter : null;
+      const approvals = await API.approvals(filterStatus ? {status: filterStatus} : {});
+      S._approvalsList = approvals;
+      this._renderApprovals(approvals);
     }catch(e){
       $('appr-body').innerHTML = `<div class="empty">Failed to load approvals: ${esc(e.message)}</div>`;
     }
+  },
+
+  filterApprovals(status){
+    S._apprStatusFilter = status;
+    this.approvals();
+  },
+
+  _renderApprovals(approvals){
+    const el = $('appr-body');
+    if(!el) return;
+
+    if(!approvals.length){
+      el.innerHTML = '<div class="empty">No approval requests match the current filter.</div>';
+      return;
+    }
+
+    el.innerHTML = approvals.map(a => {
+      const isPending = a.status === 'PENDING';
+
+      return `<div class="appr-card">
+        <div class="appr-header">
+          <div>
+            <span class="mono" style="font-weight:700;color:var(--text);font-size:14px">${esc(a.approval_id)}</span>
+            <span class="chip ${chipClass(a.status)}" style="margin-left:8px">${statusIcon(null, a.status)} ${esc(a.status)}</span>
+          </div>
+          <div class="mono" style="font-size:11.5px;color:var(--muted)">Created: ${shortTs(a.created_at)}</div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin-bottom:12px">
+          <div style="background:#0a1424;border:1px solid var(--line);border-radius:6px;padding:8px 12px">
+            <span style="color:var(--muted);font-size:10.5px;text-transform:uppercase;letter-spacing:.5px;display:block">Agent & Trace</span>
+            <span style="font-weight:600">${esc(a.agent_id)}</span> · <a href="#trace-detail/${esc(a.trace_id)}" class="mono" style="color:var(--accent)">${esc(truncate(a.trace_id,16))}</a>
+          </div>
+          <div style="background:#0a1424;border:1px solid var(--line);border-radius:6px;padding:8px 12px">
+            <span style="color:var(--muted);font-size:10.5px;text-transform:uppercase;letter-spacing:.5px;display:block">Target Tool & Policy</span>
+            <b style="color:var(--text)">${esc(a.tool_name)}</b> (${esc(a.policy_id||'Policy')} v${a.policy_version||1})
+          </div>
+        </div>
+
+        <div style="margin-bottom:10px">
+          <span style="color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:4px">Arguments</span>
+          <code class="io" style="max-height:80px">${esc(fmtJson(a.tool_arguments))}</code>
+        </div>
+
+        <div style="font-size:12px;color:var(--muted);margin-bottom:10px">
+          <b style="color:var(--text)">Reason:</b> ${esc(a.reason||'Policy requested approval')}
+        </div>
+
+        ${isPending ? `
+          <div class="appr-actions">
+            <input type="text" id="appr-op-${esc(a.approval_id)}" class="appr-input" value="lead_credit_officer" placeholder="Resolver / Operator ID">
+            <input type="text" id="appr-cmt-${esc(a.approval_id)}" class="appr-input" style="flex:1;min-width:200px" placeholder="Optional sign-off comment">
+            <button class="btn btn-success" onclick="Views.resolveApproval('${esc(a.approval_id)}', 'approve')">✓ Approve Action</button>
+            <button class="btn btn-danger" onclick="Views.resolveApproval('${esc(a.approval_id)}', 'reject')">✗ Reject Action</button>
+          </div>
+        ` : `
+          <div style="background:var(--panel-2);border:1px solid var(--line);border-radius:6px;padding:8px 12px;font-size:12px;color:var(--muted)">
+            Resolved by <b style="color:var(--text)">${esc(a.resolved_by||'operator')}</b> at <span class="mono">${shortTs(a.resolved_at)}</span>
+            ${a.comment ? ` · Comment: <i>"${esc(a.comment)}"` : ''}
+          </div>
+        `}
+      </div>`;
+    }).join('');
+  },
+
+  async resolveApproval(approvalId, action){
+    const opInput = $(`appr-op-${approvalId}`);
+    const cmtInput = $(`appr-cmt-${approvalId}`);
+    const resolvedBy = (opInput ? opInput.value.trim() : '') || 'operator';
+    const comment = cmtInput ? cmtInput.value.trim() : null;
+
+    try{
+      if(action === 'approve'){
+        await API.approve(approvalId, {resolved_by: resolvedBy, comment: comment});
+        this.showApprNotice(`Approval ${approvalId} APPROVED by ${resolvedBy}. Runtime execution permitted.`, 'ok');
+      } else {
+        await API.reject(approvalId, {resolved_by: resolvedBy, comment: comment});
+        this.showApprNotice(`Approval ${approvalId} REJECTED by ${resolvedBy}. Runtime execution blocked.`, 'bad');
+      }
+      this.approvals();
+    }catch(e){
+      this.showApprNotice(`Failed to ${action} approval: ${e.message}`, 'bad');
+    }
+  },
+
+  showApprNotice(msg, type='ok'){
+    const el = $('appr-notice');
+    if(!el) return;
+    el.innerHTML = `<div class="${type==='ok'?'val-ok':'val-alert'}">${esc(msg)}</div>`;
+    setTimeout(()=> { if(el) el.innerHTML=''; }, 4000);
   },
 
   /* ─────── EVIDENCE ─────── */
