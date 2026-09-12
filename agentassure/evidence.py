@@ -36,6 +36,10 @@ class EvidenceRecord(BaseModel):
     controls: Optional[str] = None  # e.g. "ISO/IEC 42001 A.9.4 | EU AI Act Art. 14"
     redactions: int = 0
     risk_score: float = 0.0
+    model: Optional[str] = None
+    input_tokens: Optional[int] = None
+    output_tokens: Optional[int] = None
+    cost_usd: Optional[float] = None
     previous_hash: str = GENESIS_HASH
     record_hash: str = ""
 
@@ -96,10 +100,28 @@ class EvidenceStore:
                     controls TEXT,
                     redactions INTEGER DEFAULT 0,
                     risk_score REAL DEFAULT 0.0,
+                    model TEXT,
+                    input_tokens INTEGER,
+                    output_tokens INTEGER,
+                    cost_usd REAL,
                     previous_hash TEXT NOT NULL,
                     record_hash TEXT NOT NULL
                 )
             """)
+            # Schema migration: ensure new cost columns exist on older databases
+            cursor.execute("PRAGMA table_info(evidence_records)")
+            existing_cols = {col[1] for col in cursor.fetchall()}
+            for col_name, col_type in [
+                ("model", "TEXT"),
+                ("input_tokens", "INTEGER"),
+                ("output_tokens", "INTEGER"),
+                ("cost_usd", "REAL"),
+            ]:
+                if col_name not in existing_cols:
+                    try:
+                        cursor.execute(f"ALTER TABLE evidence_records ADD COLUMN {col_name} {col_type}")
+                    except Exception:
+                        pass
             conn.commit()
 
     def get_latest_record_hash(self) -> str:
@@ -121,6 +143,10 @@ class EvidenceStore:
         controls: Optional[str] = None,
         risk_score: float = 0.0,
         mask_pii: bool = True,
+        model: Optional[str] = None,
+        input_tokens: Optional[int] = None,
+        output_tokens: Optional[int] = None,
+        cost_usd: Optional[float] = None,
     ) -> EvidenceRecord:
 
         previous_hash = self.get_latest_record_hash()
@@ -162,6 +188,10 @@ class EvidenceStore:
             controls=controls,
             redactions=redactions,
             risk_score=risk_score,
+            model=model,
+            input_tokens=input_tokens,
+            output_tokens=output_tokens,
+            cost_usd=cost_usd,
             previous_hash=previous_hash,
             record_hash="",
         )
@@ -174,13 +204,15 @@ class EvidenceStore:
                     record_id, event_id, trace_id, span_id, parent_span_id,
                     agent_id, session_id, timestamp, event_type, tool_name,
                     input, output, policy_id, policy_version, decision, reason,
-                    controls, redactions, risk_score, previous_hash, record_hash
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    controls, redactions, risk_score, model, input_tokens,
+                    output_tokens, cost_usd, previous_hash, record_hash
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (
                 record.record_id, record.event_id, record.trace_id, record.span_id, record.parent_span_id,
                 record.agent_id, record.session_id, record.timestamp, record.event_type, record.tool_name,
                 record.input, record.output, record.policy_id, record.policy_version, record.decision, record.reason,
-                record.controls, record.redactions, record.risk_score, record.previous_hash, record.record_hash
+                record.controls, record.redactions, record.risk_score, record.model, record.input_tokens,
+                record.output_tokens, record.cost_usd, record.previous_hash, record.record_hash
             ))
             conn.commit()
 
