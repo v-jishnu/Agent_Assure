@@ -4,6 +4,7 @@ AgentAssure Developer SDK & Agent Integration Interface
 
 import functools
 import inspect
+import os
 from typing import Any, Callable, Dict, List, Optional, Union
 from agentassure.events import AgentEvent, EventType, EventStatus
 from agentassure.trace import TraceContext, generate_span_id
@@ -20,19 +21,34 @@ class AgentAssure:
     def __init__(
         self,
         policy_path: Optional[str] = None,
-        db_path: str = "agentassure.db",
-        agent_id: str = "loan-agent",
-        environment: str = "demo",
+        db_path: Optional[str] = None,
+        agent_id: Optional[str] = None,
+        environment: Optional[str] = None,
         detectors: Optional[List[BaseDetector]] = None,
         publisher: Optional[EventPublisher] = None,
     ):
-        self.agent_id = agent_id
-        self.environment = environment
-        self.session_id = "default_session"
-        self.db_path = db_path
+        from agentassure.config import (
+            load_config,
+            get_db_path,
+            get_policy_path,
+            get_agent_id,
+            get_environment,
+        )
+        cfg = load_config()
 
-        if policy_path:
-            self.policy_engine = PolicyEngine.load_from_yaml(policy_path)
+        self.agent_id = agent_id or os.environ.get("AGENTASSURE_AGENT_ID") or get_agent_id(cfg)
+        self.environment = (
+            environment
+            or os.environ.get("AGENTASSURE_ENVIRONMENT")
+            or os.environ.get("AGENTASSURE_ENV")
+            or get_environment(cfg)
+        )
+        self.session_id = "default_session"
+        self.db_path = db_path or os.environ.get("AGENTASSURE_DB") or get_db_path(cfg)
+
+        resolved_policy = policy_path or os.environ.get("AGENTASSURE_POLICY") or get_policy_path(cfg)
+        if resolved_policy:
+            self.policy_engine = PolicyEngine.load_from_yaml(resolved_policy)
         else:
             self.policy_engine = PolicyEngine()
 
@@ -41,12 +57,49 @@ class AgentAssure:
 
         self.detectors = detectors
         self.enforcement_engine = EnforcementEngine(self.policy_engine, self.detectors)
-        self.evidence_store = EvidenceStore(db_path)
-        self.approval_store = ApprovalStore(db_path)
+        self.evidence_store = EvidenceStore(self.db_path)
+        self.approval_store = ApprovalStore(self.db_path)
         self.publisher = publisher or default_event_publisher
 
     def set_session(self, session_id: str):
         self.session_id = session_id
+
+    def track_llm_call(
+        self,
+        model: str,
+        input_tokens: int,
+        output_tokens: int,
+        latency_ms: float = 0.0,
+        trace_id: Optional[str] = None,
+    ):
+        """Record token usage and cost for an LLM call into the current trace."""
+        from agentassure.cost import default_cost_tracker
+        if not trace_id:
+            trace_id, _, _ = TraceContext.get_current()
+        return default_cost_tracker.record(
+            trace_id=trace_id,
+            model=model,
+            input_tokens=input_tokens,
+            output_tokens=output_tokens,
+            latency_ms=latency_ms,
+        )
+
+    def govern(self, tool_or_func: Optional[Callable] = None, *, tool_name: Optional[str] = None) -> Any:
+        """
+        Decorator for tool functions.
+        Supports:
+            @aa.govern
+            def my_tool(...): ...
+        and:
+            @aa.govern(tool_name="custom_name")
+            def my_tool(...): ...
+        """
+        if tool_or_func is None:
+            def decorator(fn: Callable) -> Callable:
+                return self.wrap_tool(fn, tool_name=tool_name)
+            return decorator
+
+        return self.wrap_tool(tool_or_func, tool_name=tool_name)
 
     def _record_and_publish(
         self,
@@ -57,8 +110,24 @@ class AgentAssure:
         reason: Optional[str] = None,
         controls: Optional[str] = None,
         risk_score: float = 0.0,
+        model: Optional[str] = None,
+        input_tokens: Optional[int] = None,
+        output_tokens: Optional[int] = None,
+        cost_usd: Optional[float] = None,
     ) -> EvidenceRecord:
         """Persist evidence record first, then publish live event notification."""
+        if model is None:
+            try:
+                from agentassure.cost import default_cost_tracker
+                cost_rec = default_cost_tracker.get(event.trace_id)
+                if cost_rec:
+                    model = cost_rec.model
+                    input_tokens = cost_rec.input_tokens
+                    output_tokens = cost_rec.output_tokens
+                    cost_usd = cost_rec.cost_usd
+            except Exception:
+                pass
+
         rec = self.evidence_store.record_event(
             event=event,
             policy_id=policy_id,
@@ -67,6 +136,10 @@ class AgentAssure:
             reason=reason,
             controls=controls,
             risk_score=risk_score,
+            model=model,
+            input_tokens=input_tokens,
+            output_tokens=output_tokens,
+            cost_usd=cost_usd,
         )
 
         payload = event.to_dict()
