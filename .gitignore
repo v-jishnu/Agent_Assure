@@ -24,3 +24,6 @@ dist/
 
 # Vercel CLI local project linkage (per-developer, not shared)
 .vercel/
+
+# Local AgentAssure data directory
+.agentassure/

@@ -18,6 +18,22 @@ dependencies = [
     # produces a package whose server module cannot be imported.
     "fastapi>=0.100.0",
     "uvicorn>=0.22.0",
+    "click>=8.0.0",
+    "rich>=13.0.0",
+]
+
+[project.scripts]
+agentassure = "agentassure.cli.main:app"
+
+[project.optional-dependencies]
+ingest = [
+    "pypdf>=3.0.0",
+    "python-docx>=0.8.11",
+]
+dev = [
+    "pytest>=7.0.0",
+    "httpx>=0.24.0",
+    "pytest-asyncio>=0.21.0",
 ]
 
 [tool.setuptools.packages.find]
