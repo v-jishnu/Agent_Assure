@@ -258,6 +258,21 @@ class PolicyEngine:
         if isinstance(tool_input, dict):
             eval_context.update(tool_input)
 
+        # Inject cost and token usage from current trace if active
+        try:
+            from agentassure.trace import TraceContext
+            from agentassure.cost import default_cost_tracker
+            trace_id, _, _ = TraceContext.get_current()
+            cost_rec = default_cost_tracker.get(trace_id)
+            if cost_rec:
+                eval_context["cost_usd"] = cost_rec.cost_usd
+                eval_context["total_tokens"] = cost_rec.total_tokens
+                eval_context["input_tokens"] = cost_rec.input_tokens
+                eval_context["output_tokens"] = cost_rec.output_tokens
+                eval_context["model"] = cost_rec.model
+        except Exception:
+            pass
+
         # 2. Check rules in order
         for rule in self.rules:
             if rule.mode == PolicyMode.DISABLED:
